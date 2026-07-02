@@ -1,0 +1,32 @@
+# Frontend-only deployment for when you ALREADY run riven-ts elsewhere on the
+# same Docker host (its own compose stack, no published ports).
+#
+# 1. Find the network your riven container is on:
+#      docker inspect riven --format '{{range $k,$v := .NetworkSettings.Networks}}{{println $k}}{{end}}'
+# 2. Run with that network name (and your .env from .env.example):
+#      RIVEN_NETWORK=<network-name> docker compose -f docker-compose.standalone.yaml up -d
+#
+# BACKEND_GRAPHQL_URL defaults to http://riven:3000/ — the container name of
+# your existing riven-ts on that shared network. Override in .env if yours
+# is named differently.
+services:
+    riven-frontend:
+        build: .
+        restart: unless-stopped
+        ports:
+            - '3001:3000'
+        environment:
+            - FRONTEND_PASSWORD=${FRONTEND_PASSWORD:?set FRONTEND_PASSWORD in .env}
+            - AUTH_SECRET=${AUTH_SECRET:?set AUTH_SECRET in .env}
+            - BACKEND_GRAPHQL_URL=${BACKEND_GRAPHQL_URL:-http://riven:3000/}
+            - TMDB_READ_ACCESS_TOKEN=${TMDB_READ_ACCESS_TOKEN:-}
+            # Must match the URL you open in the browser (or your reverse-proxy
+            # public URL), otherwise form submissions fail with 403.
+            - ORIGIN=${ORIGIN:-http://localhost:3001}
+        networks:
+            - riven-net
+
+networks:
+    riven-net:
+        external: true
+        name: ${RIVEN_NETWORK:?set RIVEN_NETWORK to the docker network riven-ts runs on}
