@@ -1,0 +1,409 @@
+# Vendored riven-ts GraphQL schema.
+#
+# Hand-assembled from the riven-ts source (type-graphql resolvers + entities in
+# packages/util-plugin-sdk/lib/dto and apps/riven/lib/graphql/resolvers).
+# Plugin-provided fields (seerr*, <plugin>IsValid) only exist on a live server
+# when the corresponding plugin is enabled — the runtime capability service
+# (src/lib/server/capabilities.ts) gates their use.
+#
+# Refresh against a running backend with: pnpm fetch-schema
+
+scalar DateTimeISO
+scalar BigInt
+scalar JSONObject
+
+"""
+The state of a media item in the processing pipeline
+"""
+enum MediaItemState {
+    unknown
+    unreleased
+    ongoing
+    indexed
+    scraped
+    downloaded
+    completed
+    partially_completed
+    failed
+    paused
+}
+
+"""
+The current status of a TV show
+"""
+enum ShowStatus {
+    continuing
+    upcoming
+    ended
+    unknown
+}
+
+"""
+The content rating of a movie (MPAA)
+"""
+enum MovieContentRating {
+    G
+    PG
+    PG_13
+    R
+    NC_17
+    UNKNOWN
+}
+
+"""
+The content rating of a TV show (TV Parental Guidelines)
+"""
+enum ShowContentRating {
+    TV_Y
+    TV_Y7
+    TV_G
+    TV_PG
+    TV_14
+    TV_MA
+    UNKNOWN
+}
+
+"""
+The levels of logging severity
+"""
+enum LogLevel {
+    SILLY
+    DEBUG
+    VERBOSE
+    HTTP
+    INFO
+    WARN
+    ERROR
+}
+
+interface MediaItem {
+    id: ID!
+    title: String!
+    fullTitle: String!
+    imdbId: String
+    posterPath: String
+    createdAt: DateTimeISO!
+    updatedAt: DateTimeISO
+    indexedAt: DateTimeISO!
+    scrapedAt: DateTimeISO
+    scrapedTimes: Float!
+    aliases: JSONObject
+    isAnime: Boolean!
+    network: String
+    country: String
+    language: String
+    releaseDate: DateTimeISO
+    year: Float
+    genres: [String!]
+    rating: Float
+    state: MediaItemState!
+    failedScrapeAttempts: Float!
+    filesystemEntries: [FileSystemEntry!]!
+    subtitles: [SubtitleEntry!]!
+    activeStream: Stream
+    streams: [Stream!]!
+    blacklistedStreams: [BlacklistedStream!]!
+    type: String!
+    expectedFileCount: Int!
+}
+
+interface ShowLikeMediaItem implements MediaItem {
+    id: ID!
+    title: String!
+    fullTitle: String!
+    imdbId: String
+    posterPath: String
+    createdAt: DateTimeISO!
+    updatedAt: DateTimeISO
+    indexedAt: DateTimeISO!
+    scrapedAt: DateTimeISO
+    scrapedTimes: Float!
+    aliases: JSONObject
+    isAnime: Boolean!
+    network: String
+    country: String
+    language: String
+    releaseDate: DateTimeISO
+    year: Float
+    genres: [String!]
+    rating: Float
+    state: MediaItemState!
+    failedScrapeAttempts: Float!
+    filesystemEntries: [FileSystemEntry!]!
+    subtitles: [SubtitleEntry!]!
+    activeStream: Stream
+    streams: [Stream!]!
+    blacklistedStreams: [BlacklistedStream!]!
+    type: String!
+    expectedFileCount: Int!
+    tvdbId: String!
+}
+
+type Movie implements MediaItem {
+    id: ID!
+    title: String!
+    fullTitle: String!
+    imdbId: String
+    posterPath: String
+    createdAt: DateTimeISO!
+    updatedAt: DateTimeISO
+    indexedAt: DateTimeISO!
+    scrapedAt: DateTimeISO
+    scrapedTimes: Float!
+    aliases: JSONObject
+    isAnime: Boolean!
+    network: String
+    country: String
+    language: String
+    releaseDate: DateTimeISO
+    year: Float
+    genres: [String!]
+    rating: Float
+    state: MediaItemState!
+    failedScrapeAttempts: Float!
+    filesystemEntries: [FileSystemEntry!]!
+    subtitles: [SubtitleEntry!]!
+    activeStream: Stream
+    streams: [Stream!]!
+    blacklistedStreams: [BlacklistedStream!]!
+    type: String!
+    expectedFileCount: Int!
+    runtime: Int
+    contentRating: MovieContentRating!
+    tmdbId: String!
+}
+
+type Show implements ShowLikeMediaItem & MediaItem {
+    id: ID!
+    title: String!
+    fullTitle: String!
+    imdbId: String
+    posterPath: String
+    createdAt: DateTimeISO!
+    updatedAt: DateTimeISO
+    indexedAt: DateTimeISO!
+    scrapedAt: DateTimeISO
+    scrapedTimes: Float!
+    aliases: JSONObject
+    isAnime: Boolean!
+    network: String
+    country: String
+    language: String
+    releaseDate: DateTimeISO
+    year: Float
+    genres: [String!]
+    rating: Float
+    state: MediaItemState!
+    failedScrapeAttempts: Float!
+    filesystemEntries: [FileSystemEntry!]!
+    subtitles: [SubtitleEntry!]!
+    activeStream: Stream
+    streams: [Stream!]!
+    blacklistedStreams: [BlacklistedStream!]!
+    type: String!
+    expectedFileCount: Int!
+    tvdbId: String!
+    contentRating: ShowContentRating!
+    status: ShowStatus
+    seasons(includeSpecials: Boolean! = false): [Season!]!
+    requestedSeasons: [Season!]!
+}
+
+type Season implements ShowLikeMediaItem & MediaItem {
+    id: ID!
+    title: String!
+    fullTitle: String!
+    imdbId: String
+    posterPath: String
+    createdAt: DateTimeISO!
+    updatedAt: DateTimeISO
+    indexedAt: DateTimeISO!
+    scrapedAt: DateTimeISO
+    scrapedTimes: Float!
+    aliases: JSONObject
+    isAnime: Boolean!
+    network: String
+    country: String
+    language: String
+    releaseDate: DateTimeISO
+    year: Float
+    genres: [String!]
+    rating: Float
+    state: MediaItemState!
+    failedScrapeAttempts: Float!
+    filesystemEntries: [FileSystemEntry!]!
+    subtitles: [SubtitleEntry!]!
+    activeStream: Stream
+    streams: [Stream!]!
+    blacklistedStreams: [BlacklistedStream!]!
+    type: String!
+    expectedFileCount: Int!
+    tvdbId: String!
+    number: Int!
+    show: Show!
+    episodes: [Episode!]!
+    totalEpisodes: Int!
+}
+
+type Episode implements ShowLikeMediaItem & MediaItem {
+    id: ID!
+    title: String!
+    fullTitle: String!
+    imdbId: String
+    posterPath: String
+    createdAt: DateTimeISO!
+    updatedAt: DateTimeISO
+    indexedAt: DateTimeISO!
+    scrapedAt: DateTimeISO
+    scrapedTimes: Float!
+    aliases: JSONObject
+    isAnime: Boolean!
+    network: String
+    country: String
+    language: String
+    releaseDate: DateTimeISO
+    year: Float
+    genres: [String!]
+    rating: Float
+    state: MediaItemState!
+    failedScrapeAttempts: Float!
+    filesystemEntries: [FileSystemEntry!]!
+    subtitles: [SubtitleEntry!]!
+    activeStream: Stream
+    streams: [Stream!]!
+    blacklistedStreams: [BlacklistedStream!]!
+    type: String!
+    expectedFileCount: Int!
+    tvdbId: String!
+    number: Int!
+    absoluteNumber: Int!
+    season: Season!
+    runtime: Int
+    contentRating: ShowContentRating!
+    lookupKeys: [String!]!
+}
+
+union MediaItemUnion = Movie | Show | Season | Episode
+
+type FileSystemEntry {
+    id: ID!
+    fileSize: BigInt!
+    createdAt: DateTimeISO!
+    updatedAt: DateTimeISO
+    mediaItem: MediaItem!
+    type: String!
+}
+
+type MediaEntry {
+    id: ID!
+    fileSize: BigInt!
+    createdAt: DateTimeISO!
+    updatedAt: DateTimeISO
+    mediaItem: MediaItem!
+    type: String!
+    originalFilename: String!
+    downloadUrl: String
+    streamPermalink: String
+    plugin: String!
+    provider: String
+    providerDownloadId: String
+    libraryProfiles: [String!]
+    mediaMetadata: JSONObject
+}
+
+type SubtitleEntry {
+    id: ID!
+    fileSize: BigInt!
+    createdAt: DateTimeISO!
+    updatedAt: DateTimeISO
+    mediaItem: MediaItem!
+    type: String!
+    language: String!
+    content: String!
+    fileHash: String!
+    sourceProvider: Int!
+    sourceId: String
+}
+
+union FileSystemEntryUnion = MediaEntry | SubtitleEntry
+
+type Stream {
+    infoHash: ID!
+    parents: [MediaItem!]!
+}
+
+type BlacklistedStream {
+    stream: Stream!
+    mediaItem: MediaItem!
+    provider: String
+    plugin: String!
+}
+
+type VfsEntryStat {
+    mtime: DateTimeISO!
+    ctime: DateTimeISO!
+    atime: DateTimeISO!
+    mode: Int!
+    nlink: Int!
+    size: BigInt!
+    uid: Int!
+    gid: Int!
+}
+
+type RivenSettings {
+    """
+    The current version of the application
+    """
+    version: String!
+    """
+    The API key for accessing the service
+    """
+    apiKey: String!
+    """
+    The logging level for the application
+    """
+    logLevel: LogLevel!
+}
+
+type Settings {
+    riven: RivenSettings!
+}
+
+input SeerrHandleWebhookInput {
+    payload: JSONObject!
+}
+
+type Query {
+    """
+    Fetches a media item by its ID. The returned type will be one of the
+    specific media item types (e.g., Movie, Episode) based on the underlying data.
+    """
+    mediaItemById(id: ID!): MediaItemUnion!
+    mediaItems: [MediaItem!]!
+    """
+    Fetches an episode by its TVDB ID, season number, and episode number.
+    If season number is not provided, it will lookup using absolute episode numbering.
+    """
+    episode(tvdbId: String!, episodeNumber: Int!, seasonNumber: Int): Episode
+    settings: Settings!
+    vfsEntryStat(path: String!): VfsEntryStat!
+    vfsEntry(path: String!): FileSystemEntryUnion
+    vfsDirectoryEntryPaths(path: String!): [String!]!
+
+    # ── Plugin-provided (present only when the plugin is enabled) ──────────
+    tmdbIsValid: Boolean!
+    tvdbIsValid: Boolean!
+    seerrIsValid: Boolean!
+}
+
+type Mutation {
+    resetMediaItem(id: ID!): [MediaItemUnion!]!
+    saveStreamUrl(id: ID!, url: String!): MediaEntry!
+    """
+    Uploads the last 24 hours of logs and returns a share session id.
+    """
+    shareLogs: String!
+
+    # ── Plugin-provided (present only when the seerr plugin is enabled) ────
+    seerrHandleWebhook(input: SeerrHandleWebhookInput!): Boolean!
+}

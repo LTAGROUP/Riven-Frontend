@@ -1,0 +1,23 @@
+{
+    "version": "0.0.1",
+    "configurations": [
+        {
+            "name": "mock-backend",
+            "runtimeExecutable": "pnpm",
+            "runtimeArgs": ["mock"],
+            "port": 3999
+        },
+        {
+            "name": "dev",
+            "runtimeExecutable": "env",
+            "runtimeArgs": [
+                "BACKEND_GRAPHQL_URL=http://localhost:3999/",
+                "FRONTEND_PASSWORD=dev",
+                "AUTH_SECRET=dev-secret-dev-secret-dev-secret-123",
+                "pnpm",
+                "dev"
+            ],
+            "port": 5173
+        }
+    ]
+}
