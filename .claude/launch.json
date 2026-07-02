@@ -18,6 +18,19 @@
                 "dev"
             ],
             "port": 5173
+        },
+        {
+            "name": "dev-db-fallback",
+            "runtimeExecutable": "env",
+            "runtimeArgs": [
+                "BACKEND_GRAPHQL_URL=http://localhost:3998/",
+                "RIVEN_DATABASE_URL=postgresql://riven:test@localhost:5433/riven",
+                "FRONTEND_PASSWORD=dev",
+                "AUTH_SECRET=dev-secret-dev-secret-dev-secret-123",
+                "pnpm",
+                "dev"
+            ],
+            "port": 5173
         }
     ]
 }

@@ -109,7 +109,18 @@
         </Button>
     </div>
 
-    {#if !capabilities.hasMediaItemsPagination}
+    {#if data.source === 'database'}
+        <div
+            class="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300"
+        >
+            <Info class="mt-0.5 size-4 shrink-0" />
+            <span>
+                riven-ts's <code class="font-mono">mediaItems</code> API is currently broken upstream
+                — this listing is read directly from Riven's database instead. Everything is up to date;
+                actions still go through the API.
+            </span>
+        </div>
+    {:else if !capabilities.hasMediaItemsPagination}
         <div
             class="flex items-start gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-300"
         >

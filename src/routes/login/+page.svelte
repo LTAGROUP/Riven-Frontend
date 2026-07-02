@@ -10,6 +10,7 @@
 
     let { form }: { form: ActionData } = $props();
     let submitting = $state(false);
+    let unexpectedError = $state<string | null>(null);
 </script>
 
 <svelte:head>
@@ -32,8 +33,15 @@
                 method="POST"
                 use:enhance={() => {
                     submitting = true;
-                    return async ({ update }) => {
+                    unexpectedError = null;
+                    return async ({ result, update }) => {
                         submitting = false;
+                        if (result.type === 'error') {
+                            // Typically a CSRF 403: the ORIGIN env var doesn't
+                            // match the URL in the address bar.
+                            unexpectedError =
+                                "Login request was rejected by the server. If you are the admin: check that the ORIGIN environment variable exactly matches this site's URL.";
+                        }
                         await update();
                     };
                 }}
@@ -53,6 +61,8 @@
                 </div>
                 {#if form?.message}
                     <p class="text-sm text-destructive">{form.message}</p>
+                {:else if unexpectedError}
+                    <p class="text-sm text-destructive">{unexpectedError}</p>
                 {/if}
                 <Button type="submit" disabled={submitting} class="w-full">
                     {submitting ? 'Signing in…' : 'Sign in'}

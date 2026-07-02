@@ -19,6 +19,13 @@ import { createFixtures, vfsIsDirectory, vfsTree, type MockItem } from './mock-f
 
 const PORT = Number(process.env.MOCK_PORT ?? 3999);
 const PLUGINS_ENABLED = process.env.MOCK_PLUGINS !== 'none';
+// Simulates the upstream riven-ts bug where interface/union type resolution
+// fails (https://github.com/rivenmedia/riven-ts): MOCK_BROKEN_MEDIAITEMS=1
+const BROKEN_MEDIA_ITEMS = process.env.MOCK_BROKEN_MEDIAITEMS === '1';
+const upstreamBugError = () =>
+    new Error(
+        'Cannot resolve type for interface MediaItem! You need to return instance of object type class, not a plain object!'
+    );
 
 const items = createFixtures();
 
@@ -198,11 +205,13 @@ const yoga = createYoga({
             },
             Query: {
                 mediaItems: () => {
+                    if (BROKEN_MEDIA_ITEMS) throw upstreamBugError();
                     // The real backend caps this query at 25 rows and mixes in
                     // seasons/episodes — replicate both quirks.
                     return [...items.values()].slice(0, 25).map(decorate);
                 },
                 mediaItemById: (_: unknown, { id }: { id: string }) => {
+                    if (BROKEN_MEDIA_ITEMS) throw upstreamBugError();
                     const item = items.get(id);
                     if (!item) throw new Error(`MediaItem ${id} not found`);
                     return decorate(item);

@@ -1,5 +1,4 @@
-import { LibraryItemsQuery } from '$lib/graphql/operations/media';
-import { execute } from '$lib/server/graphql-client';
+import { getLibraryItems } from '$lib/server/library';
 import { tmdbConfigured } from '$lib/server/env';
 import { tmdb, type TmdbPagedResponse } from '$lib/server/tmdb';
 
@@ -7,20 +6,24 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
     const [library, trendingMovies, trendingShows] = await Promise.allSettled([
-        execute(LibraryItemsQuery),
+        getLibraryItems(),
         tmdb<TmdbPagedResponse>('trending/movie/week'),
         tmdb<TmdbPagedResponse>('trending/tv/week')
     ]);
 
-    const items = library.status === 'fulfilled' ? library.value.mediaItems : [];
-    const recentlyAdded = items
+    const result =
+        library.status === 'fulfilled'
+            ? library.value
+            : { items: [], source: 'none' as const, error: 'Failed to load library' };
+
+    const recentlyAdded = result.items
         .filter((item) => item.type === 'movie' || item.type === 'show')
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 12);
 
     return {
         recentlyAdded,
-        libraryError: library.status === 'rejected',
+        libraryError: result.error !== null,
         tmdbConfigured: tmdbConfigured(),
         trendingMovies:
             trendingMovies.status === 'fulfilled' ? trendingMovies.value.results.slice(0, 15) : [],

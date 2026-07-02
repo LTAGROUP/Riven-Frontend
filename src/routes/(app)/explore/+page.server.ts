@@ -1,9 +1,9 @@
 import { fail } from '@sveltejs/kit';
 
-import { LibraryItemsQuery } from '$lib/graphql/operations/media';
 import { RequestViaSeerrMutation, buildSeerrRequestPayload } from '$lib/graphql/operations/seerr';
 import { getCapabilities } from '$lib/server/capabilities';
 import { BackendError, execute } from '$lib/server/graphql-client';
+import { getLibraryItems } from '$lib/server/library';
 import { tmdbConfigured } from '$lib/server/env';
 import { tmdb, type TmdbPagedResponse } from '$lib/server/tmdb';
 
@@ -14,16 +14,15 @@ export const load: PageServerLoad = async () => {
         tmdbConfigured()
             ? tmdb<TmdbPagedResponse>('trending/movie/week')
             : Promise.resolve({ results: [] } as unknown as TmdbPagedResponse),
-        execute(LibraryItemsQuery)
+        getLibraryItems()
     ]);
 
     // ids already in the library, for "In library" badges on search results
     const libraryIds = new Set<string>();
     if (library.status === 'fulfilled') {
-        for (const item of library.value.mediaItems) {
-            if ('tmdbId' in item && item.tmdbId) libraryIds.add(`movie:${item.tmdbId}`);
-            if ('tvdbId' in item && item.tvdbId && item.type === 'show')
-                libraryIds.add(`tv:${item.tvdbId}`);
+        for (const item of library.value.items) {
+            if (item.tmdbId) libraryIds.add(`movie:${item.tmdbId}`);
+            if (item.tvdbId && item.type === 'show') libraryIds.add(`tv:${item.tvdbId}`);
         }
     }
 

@@ -35,7 +35,12 @@
         {/if}
     </div>
 
-    {#if !capabilities.hasMediaItemsPagination}
+    {#if data.source === 'database'}
+        <p class="text-sm text-muted-foreground">
+            Figures read directly from Riven's database ({data.stats.total} items) while the riven-ts
+            listing API is broken upstream.
+        </p>
+    {:else if !capabilities.hasMediaItemsPagination}
         <p class="text-sm text-muted-foreground">
             Figures cover the latest {data.stats.total} items — riven-ts doesn't expose full library stats
             yet.

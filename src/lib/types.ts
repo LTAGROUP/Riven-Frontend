@@ -1,3 +1,30 @@
+/**
+ * A library listing entry. Shape matches the GraphQL LibraryItems selection so
+ * the database fallback (src/lib/server/db.ts) can substitute transparently.
+ */
+export interface LibraryItem {
+    id: string;
+    type: string;
+    title: string;
+    fullTitle: string;
+    imdbId: string | null;
+    posterPath: string | null;
+    state: string;
+    releaseDate: string | null;
+    year: number | null;
+    genres: string[] | null;
+    rating: number | null;
+    language: string | null;
+    isAnime: boolean;
+    indexedAt: string;
+    scrapedAt: string | null;
+    createdAt: string;
+    updatedAt: string | null;
+    tmdbId?: string;
+    tvdbId?: string;
+    number?: number;
+}
+
 /** Feature support detected from the backend schema at runtime (shared client/server). */
 export interface Capabilities {
     backendReachable: boolean;

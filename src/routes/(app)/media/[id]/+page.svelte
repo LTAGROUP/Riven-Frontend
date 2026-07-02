@@ -74,6 +74,17 @@
 </svelte:head>
 
 <div class="mx-auto max-w-5xl space-y-6">
+    {#if data.limited}
+        <div
+            class="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300"
+        >
+            <CircleAlert class="mt-0.5 size-4 shrink-0" />
+            <span>
+                riven-ts's item API is currently broken upstream — showing details read directly
+                from Riven's database. Stream and file listings are unavailable in this mode.
+            </span>
+        </div>
+    {/if}
     <div class="flex flex-col gap-6 md:flex-row">
         <div class="w-40 shrink-0 md:w-52">
             <div class="aspect-[2/3] overflow-hidden rounded-lg border bg-muted">

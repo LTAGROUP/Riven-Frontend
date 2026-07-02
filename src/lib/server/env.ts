@@ -9,6 +9,14 @@ const EnvSchema = z.object({
     TMDB_READ_ACCESS_TOKEN: z
         .string()
         .optional()
+        .transform((v) => (v === '' ? undefined : v)),
+    // Optional read-only connection to riven-ts's own Postgres. Used as a
+    // fallback for library listings while the backend's mediaItems query is
+    // broken (https://github.com/rivenmedia/riven-ts — "Cannot resolve type
+    // for interface MediaItem").
+    RIVEN_DATABASE_URL: z
+        .string()
+        .optional()
         .transform((v) => (v === '' ? undefined : v))
 });
 
@@ -27,7 +35,8 @@ export function getEnv(): Env {
             FRONTEND_PASSWORD: 'build',
             AUTH_SECRET: 'build-secret-build-secret-build-secret',
             BACKEND_GRAPHQL_URL: 'http://localhost:3000/',
-            TMDB_READ_ACCESS_TOKEN: undefined
+            TMDB_READ_ACCESS_TOKEN: undefined,
+            RIVEN_DATABASE_URL: undefined
         };
     }
     if (!cached) {

@@ -1,20 +1,14 @@
 import { fail } from '@sveltejs/kit';
 
-import { LibraryItemsQuery, ResetMediaItemMutation } from '$lib/graphql/operations/media';
-import { BackendError, execute } from '$lib/server/graphql-client';
+import { ResetMediaItemMutation } from '$lib/graphql/operations/media';
+import { execute } from '$lib/server/graphql-client';
+import { getLibraryItems } from '$lib/server/library';
 
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-    try {
-        const result = await execute(LibraryItemsQuery);
-        return { items: result.mediaItems, loadError: null };
-    } catch (error) {
-        return {
-            items: [],
-            loadError: error instanceof BackendError ? error.message : 'Failed to load library'
-        };
-    }
+    const result = await getLibraryItems();
+    return { items: result.items, source: result.source, loadError: result.error };
 };
 
 export const actions: Actions = {

@@ -22,14 +22,15 @@ riven-ts is still early ("cooking in progress") and its GraphQL API doesn't yet 
 the v1 backend did. This frontend detects the backend's capabilities at runtime (schema
 introspection) and degrades gracefully:
 
-| Feature                | How                                                                                                                                                                        |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Requesting media       | Sent through the **seerr plugin's webhook mutation** — requires `enabledPlugins=["seerr"]` (plus seerr `apiKey`/`url` set) in riven-ts. Buttons explain this when missing. |
-| Reset item             | Native (`resetMediaItem`).                                                                                                                                                 |
-| Delete / pause / retry | **Not supported by riven-ts yet** — shown disabled, they light up automatically once the backend adds the mutations.                                                       |
-| Edit settings          | riven-ts reads env vars at startup; the Settings page is an editor that **generates `.env.riven`** for you to apply + restart.                                             |
-| Library listing        | The backend currently caps `mediaItems` at 25 with no filters; the UI filters client-side and says so.                                                                     |
-| Live updates           | No subscriptions upstream; transitional items are polled every 15 s.                                                                                                       |
+| Feature                 | How                                                                                                                                                                                                                                                                                                 |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Requesting media        | Sent through the **seerr plugin's webhook mutation** — requires `enabledPlugins=["seerr"]` (plus seerr `apiKey`/`url` set) in riven-ts. Buttons explain this when missing.                                                                                                                          |
+| Reset item              | Native (`resetMediaItem`).                                                                                                                                                                                                                                                                          |
+| Delete / pause / retry  | **Not supported by riven-ts yet** — shown disabled, they light up automatically once the backend adds the mutations.                                                                                                                                                                                |
+| Edit settings           | riven-ts reads env vars at startup; the Settings page is an editor that **generates `.env.riven`** for you to apply + restart.                                                                                                                                                                      |
+| Library listing         | The backend currently caps `mediaItems` at 25 with no filters; the UI filters client-side and says so.                                                                                                                                                                                              |
+| Live updates            | No subscriptions upstream; transitional items are polled every 15 s.                                                                                                                                                                                                                                |
+| **Broken `mediaItems`** | riven-ts `main` currently fails `mediaItems`/`mediaItemById` with "Cannot resolve type for interface MediaItem". Set `RIVEN_DATABASE_URL` (read-only Postgres access) and the frontend falls back to reading listings straight from Riven's database — GraphQL takes over automatically once fixed. |
 
 ## Quick start (Docker)
 
