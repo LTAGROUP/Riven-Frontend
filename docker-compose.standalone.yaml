@@ -23,6 +23,10 @@ services:
             # Must match the URL you open in the browser (or your reverse-proxy
             # public URL), otherwise form submissions fail with 403.
             - ORIGIN=${ORIGIN:-http://localhost:3001}
+            # Behind a reverse proxy (Caddy/nginx), rate-limit on the real
+            # client IP from X-Forwarded-For instead of the proxy's address.
+            - ADDRESS_HEADER=x-forwarded-for
+            - XFF_DEPTH=1
         networks:
             - riven-net
 
