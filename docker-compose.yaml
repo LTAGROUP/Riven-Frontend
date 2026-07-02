@@ -41,7 +41,11 @@ services:
         security_opt:
             - apparmor:unconfined
         volumes:
-            - ./logs:/app/logs
+            # To persist riven-ts log files on the host, uncomment the next line
+            # and make it writable for the container user first:
+            #   mkdir -p logs && sudo chown -R 1000:1000 logs
+            # (console logs are always available via `docker compose logs riven`)
+            # - ./logs:/app/logs
             - /mnt/riven:/mount:rshared
         depends_on:
             riven-db:
