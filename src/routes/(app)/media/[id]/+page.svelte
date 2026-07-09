@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { CircleAlert, Pause, RotateCcw, Trash2 } from '@lucide/svelte';
+    import { CircleAlert, Copy, Pause, RotateCcw, Trash2 } from '@lucide/svelte';
     import { toast } from 'svelte-sonner';
 
     import { enhance } from '$app/forms';
@@ -187,6 +187,23 @@
                         </dd>
                     </div>
                 {/if}
+                <div class="col-span-2 sm:col-span-3">
+                    <dt class="text-muted-foreground">Item ID</dt>
+                    <dd class="flex items-center gap-1.5">
+                        <span class="font-mono text-xs">{item.id}</span>
+                        <button
+                            type="button"
+                            title="Copy item ID"
+                            class="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                            onclick={() => {
+                                navigator.clipboard.writeText(item.id);
+                                toast.success('Item ID copied');
+                            }}
+                        >
+                            <Copy class="size-3.5" />
+                        </button>
+                    </dd>
+                </div>
             </dl>
 
             <div class="flex flex-wrap gap-2">

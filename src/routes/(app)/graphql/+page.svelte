@@ -5,23 +5,109 @@
 
     import { Button } from '$lib/components/ui/button';
     import { Label } from '$lib/components/ui/label';
+    import * as Select from '$lib/components/ui/select';
     import { Textarea } from '$lib/components/ui/textarea';
 
     import type { ActionData } from './$types';
 
     let { form }: { form: ActionData } = $props();
 
-    const EXAMPLE_QUERY = `mutation ResetMediaItem($id: ID!) {
+    const TEMPLATES = [
+        {
+            id: 'reset',
+            label: 'Reset media item',
+            query: `mutation ResetMediaItem($id: ID!) {
     resetMediaItem(id: $id) {
         ... on MediaItem {
             id
             state
         }
     }
-}`;
-    const EXAMPLE_VARIABLES = `{
+}`,
+            variables: `{
     "id": "<media item id>"
-}`;
+}`
+        },
+        {
+            id: 'item-by-id',
+            label: 'Media item by ID',
+            query: `query MediaItemById($id: ID!) {
+    mediaItemById(id: $id) {
+        ... on MediaItem {
+            id
+            type
+            title
+            state
+            scrapedAt
+            scrapedTimes
+            failedScrapeAttempts
+            streams {
+                infoHash
+            }
+        }
+    }
+}`,
+            variables: `{
+    "id": "<media item id>"
+}`
+        },
+        {
+            id: 'list-items',
+            label: 'List media items',
+            query: `query MediaItems {
+    mediaItems {
+        id
+        type
+        title
+        state
+    }
+}`,
+            variables: ''
+        },
+        {
+            id: 'save-stream-url',
+            label: 'Save stream URL',
+            query: `mutation SaveStreamUrl($id: ID!, $url: String!) {
+    saveStreamUrl(id: $id, url: $url) {
+        id
+        streamPermalink
+    }
+}`,
+            variables: `{
+    "id": "<file entry id>",
+    "url": "https://…"
+}`
+        },
+        {
+            id: 'settings',
+            label: 'Backend settings',
+            query: `query Settings {
+    settings {
+        riven {
+            version
+            logLevel
+        }
+    }
+}`,
+            variables: ''
+        }
+    ];
+
+    const EXAMPLE_QUERY = TEMPLATES[0].query;
+    const EXAMPLE_VARIABLES = TEMPLATES[0].variables;
+
+    let template = $state('');
+
+    function applyTemplate(id: string | undefined) {
+        const selected = TEMPLATES.find((t) => t.id === id);
+        if (!selected) return;
+        query = selected.query;
+        variables = selected.variables;
+    }
+
+    const templateLabel = $derived(
+        TEMPLATES.find((t) => t.id === template)?.label ?? 'Insert a template…'
+    );
 
     // Intentional initial-value capture: repopulates the editors after a
     // non-JS form submission; while the page is live the user's input wins.
@@ -69,8 +155,18 @@
         }}
         class="space-y-3"
     >
-        <div class="space-y-1.5">
+        <div class="flex items-center justify-between gap-3">
             <Label for="gql-query">Operation</Label>
+            <Select.Root type="single" bind:value={template} onValueChange={applyTemplate}>
+                <Select.Trigger class="w-56">{templateLabel}</Select.Trigger>
+                <Select.Content>
+                    {#each TEMPLATES as t (t.id)}
+                        <Select.Item value={t.id}>{t.label}</Select.Item>
+                    {/each}
+                </Select.Content>
+            </Select.Root>
+        </div>
+        <div class="space-y-1.5">
             <Textarea
                 id="gql-query"
                 name="query"

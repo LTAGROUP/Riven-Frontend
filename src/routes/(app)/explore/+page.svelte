@@ -157,6 +157,7 @@
                                     (result.release_date ?? result.first_air_date ?? '').slice(0, 4)
                                 ) || null}
                                 type={result.media_type === 'tv' ? 'show' : 'movie'}
+                                href={`/explore/${result.media_type}/${result.id}`}
                                 note={inLibrary
                                     ? 'In library'
                                     : result.media_type === 'tv'
@@ -207,6 +208,7 @@
                                     (movie.release_date ?? movie.first_air_date ?? '').slice(0, 4)
                                 ) || null}
                                 type="movie"
+                                href={`/explore/movie/${movie.id}`}
                             />
                             <div
                                 class="absolute inset-x-2 bottom-14 opacity-0 transition-opacity group-hover:opacity-100"

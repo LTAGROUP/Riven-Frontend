@@ -6,6 +6,7 @@
 
     import { Button } from '$lib/components/ui/button';
     import { Label } from '$lib/components/ui/label';
+    import * as Select from '$lib/components/ui/select';
     import { Switch } from '$lib/components/ui/switch';
     import { Textarea } from '$lib/components/ui/textarea';
 
@@ -23,6 +24,73 @@
         await tick(); // let the textarea binding flush before serializing the form
         formEl?.requestSubmit();
     }
+
+    const SNIPPETS = [
+        {
+            id: 'find-by-title',
+            label: 'Find items by title',
+            sql: `select id, type, title, state, created_at
+from media_item
+where title ilike '%<title>%'
+order by created_at desc
+limit 50`
+        },
+        {
+            id: 'states',
+            label: 'Items per state',
+            sql: `select state, count(*)
+from media_item
+group by state
+order by 2 desc`
+        },
+        {
+            id: 'recent',
+            label: 'Recently added',
+            sql: `select id, type, title, state, created_at
+from media_item
+where type in ('movie', 'show')
+order by created_at desc
+limit 50`
+        },
+        {
+            id: 'failed',
+            label: 'Failed items',
+            sql: `select id, type, title, failed_scrape_attempts, scraped_at
+from media_item
+where state = 'failed'
+order by scraped_at desc nulls last
+limit 50`
+        },
+        {
+            id: 'stuck-scraping',
+            label: 'Stuck in scraping',
+            sql: `select id, type, title, scraped_times, scraped_at, updated_at
+from media_item
+where state = 'scraping'
+order by updated_at asc nulls first
+limit 50`
+        },
+        {
+            id: 'show-children',
+            label: 'Episodes of a show',
+            sql: `select e.id, s."number" as season, e."number" as episode, e.title, e.state
+from media_item e
+join media_item s on e.season_id = s.id
+where s.show_id = '<show id>'
+order by s."number", e."number"`
+        }
+    ];
+
+    let snippet = $state('');
+
+    function applySnippet(id: string | undefined) {
+        const selected = SNIPPETS.find((s) => s.id === id);
+        if (selected) sql = selected.sql;
+    }
+
+    const snippetLabel = $derived(
+        SNIPPETS.find((s) => s.id === snippet)?.label ?? 'Insert a snippet…'
+    );
 
     function onKeydown(event: KeyboardEvent) {
         if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
@@ -99,6 +167,20 @@
                     }}
                     class="space-y-3"
                 >
+                    <div class="flex justify-end">
+                        <Select.Root
+                            type="single"
+                            bind:value={snippet}
+                            onValueChange={applySnippet}
+                        >
+                            <Select.Trigger class="w-56">{snippetLabel}</Select.Trigger>
+                            <Select.Content>
+                                {#each SNIPPETS as s (s.id)}
+                                    <Select.Item value={s.id}>{s.label}</Select.Item>
+                                {/each}
+                            </Select.Content>
+                        </Select.Root>
+                    </div>
                     <Textarea
                         name="sql"
                         bind:value={sql}
@@ -167,7 +249,8 @@
                                                             title={cell ?? undefined}
                                                         >
                                                             {#if cell === null}
-                                                                <span class="text-muted-foreground italic"
+                                                                <span
+                                                                    class="text-muted-foreground italic"
                                                                     >null</span
                                                                 >
                                                             {:else}

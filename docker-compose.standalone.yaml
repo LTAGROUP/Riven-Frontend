@@ -1,3 +1,7 @@
+# DEPRECATED: kept for existing deployments that reference this file.
+# The default docker-compose.yaml is now this same frontend-only setup —
+# switch to `docker compose up -d --build` when convenient.
+#
 # Frontend-only deployment for when you ALREADY run riven-ts elsewhere on the
 # same Docker host (its own compose stack, no published ports).
 #

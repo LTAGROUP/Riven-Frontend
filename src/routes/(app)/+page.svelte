@@ -49,7 +49,7 @@
                     posterPath={movie.poster_path}
                     year={movie.release_date ? Number(movie.release_date.slice(0, 4)) : null}
                     type="movie"
-                    href={`/explore?request=movie:${movie.id}`}
+                    href={`/explore/movie/${movie.id}`}
                 />
             {/each}
         </MediaRow>
@@ -64,7 +64,7 @@
                     posterPath={show.poster_path}
                     year={show.first_air_date ? Number(show.first_air_date.slice(0, 4)) : null}
                     type="show"
-                    href={`/explore?request=tv:${show.id}`}
+                    href={`/explore/tv/${show.id}`}
                 />
             {/each}
         </MediaRow>

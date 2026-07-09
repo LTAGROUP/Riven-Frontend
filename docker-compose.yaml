@@ -1,86 +1,47 @@
-# Full riven-ts + frontend stack.
+# Frontend-only deployment (the default): for users who ALREADY run riven-ts.
+# Updating is: git pull && docker compose up -d --build
 #
-# 1. Copy .env.example to .env and fill in FRONTEND_PASSWORD / AUTH_SECRET /
-#    TMDB_READ_ACCESS_TOKEN.
-# 2. Create .env.riven with the riven-ts configuration (the frontend's
-#    Settings page generates this file for you).
-# 3. docker compose up -d
+# Setup (once):
+# 1. Copy .env.example to .env and fill in FRONTEND_PASSWORD / AUTH_SECRET
+#    (plus TMDB_READ_ACCESS_TOKEN and RIVEN_DATABASE_URL — both worth having).
+# 2. Tell it where riven-ts is, either:
+#    a) same Docker host — find riven's network and put it in .env:
+#         docker inspect riven --format '{{range $k,$v := .NetworkSettings.Networks}}{{println $k}}{{end}}'
+#         RIVEN_NETWORK=<that network>
+#       (BACKEND_GRAPHQL_URL defaults to http://riven:3000/ — override in .env
+#       if your container is named differently), or
+#    b) reachable over the network — set BACKEND_GRAPHQL_URL to its URL and
+#       RIVEN_NETWORK to any existing network (e.g. bridge).
+# 3. docker compose up -d --build
+#
+# To run riven-ts AND the frontend from scratch, use docker-compose.full.yaml.
 services:
     riven-frontend:
         build: .
-        # image: ghcr.io/<you>/riven-frontend:latest
         restart: unless-stopped
         ports:
             - '3001:3000'
         environment:
             - FRONTEND_PASSWORD=${FRONTEND_PASSWORD:?set FRONTEND_PASSWORD in .env}
             - AUTH_SECRET=${AUTH_SECRET:?set AUTH_SECRET in .env}
-            - BACKEND_GRAPHQL_URL=http://riven:3000/
+            - BACKEND_GRAPHQL_URL=${BACKEND_GRAPHQL_URL:-http://riven:3000/}
+            # TMDB v4 read token — enables Explore search/trending/detail pages
             - TMDB_READ_ACCESS_TOKEN=${TMDB_READ_ACCESS_TOKEN:-}
-            # IMPORTANT: must match the URL you open in the browser, or form
-            # submissions are rejected (SvelteKit CSRF protection).
+            # riven-ts's Postgres (read-mostly): full-library search/pagination
+            # and the Database console page.
+            # e.g. postgresql://riven:<password>@riven-postgres:5432/riven
+            - RIVEN_DATABASE_URL=${RIVEN_DATABASE_URL:-}
+            # Must match the URL you open in the browser (or your reverse-proxy
+            # public URL), otherwise form submissions fail with 403.
             - ORIGIN=${ORIGIN:-http://localhost:3001}
-        depends_on:
-            - riven
+            # Behind a reverse proxy (Caddy/nginx), rate-limit on the real
+            # client IP from X-Forwarded-For instead of the proxy's address.
+            - ADDRESS_HEADER=x-forwarded-for
+            - XFF_DEPTH=1
+        networks:
+            - riven-net
 
-    riven:
-        image: ghcr.io/rivenmedia/riven-ts:main
-        restart: unless-stopped
-        env_file: .env.riven
-        environment:
-            - RIVEN_SETTING__gqlHost=0.0.0.0
-            - RIVEN_SETTING__databaseUrl=postgresql://postgres:postgres@riven-db:5432/riven
-            - RIVEN_SETTING__redisUrl=redis://riven-cache:6379
-            - RIVEN_SETTING__vfsMountPath=/mount
-        ports:
-            - '3000:3000'
-        cap_add:
-            - SYS_ADMIN
-        devices:
-            - /dev/fuse:/dev/fuse
-        security_opt:
-            - apparmor:unconfined
-        volumes:
-            # To persist riven-ts log files on the host, uncomment the next line
-            # and make it writable for the container user first:
-            #   mkdir -p logs && sudo chown -R 1000:1000 logs
-            # (console logs are always available via `docker compose logs riven`)
-            # - ./logs:/app/logs
-            - /mnt/riven:/mount:rshared
-        depends_on:
-            riven-db:
-                condition: service_healthy
-            riven-cache:
-                condition: service_healthy
-
-    riven-db:
-        image: postgres:17-alpine
-        restart: unless-stopped
-        environment:
-            PGDATA: /var/lib/postgresql/data/pgdata
-            POSTGRES_USER: postgres
-            POSTGRES_PASSWORD: postgres
-            POSTGRES_DB: riven
-        volumes:
-            - riven-db:/var/lib/postgresql/data/pgdata
-        healthcheck:
-            test: ['CMD-SHELL', 'pg_isready -U postgres']
-            interval: 5s
-            timeout: 5s
-            retries: 10
-
-    riven-cache:
-        image: redis:8-alpine
-        restart: unless-stopped
-        command: redis-server --appendonly yes
-        volumes:
-            - riven-cache:/data
-        healthcheck:
-            test: ['CMD', 'redis-cli', 'ping']
-            interval: 5s
-            timeout: 5s
-            retries: 10
-
-volumes:
-    riven-db:
-    riven-cache:
+networks:
+    riven-net:
+        external: true
+        name: ${RIVEN_NETWORK:?set RIVEN_NETWORK to the docker network riven-ts runs on}
