@@ -1,5 +1,6 @@
 <script lang="ts">
     import {
+        Braces,
         Compass,
         Database,
         FileText,
@@ -29,6 +30,7 @@
         { href: '/vfs', label: 'Files', icon: FolderTree },
         { href: '/logs', label: 'Logs', icon: FileText },
         { href: '/database', label: 'Database', icon: Database },
+        { href: '/graphql', label: 'GraphQL', icon: Braces },
         { href: '/settings', label: 'Settings', icon: Settings }
     ];
 

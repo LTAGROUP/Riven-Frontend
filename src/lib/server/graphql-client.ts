@@ -85,3 +85,44 @@ export async function executeRaw<TResult = unknown>(
 
     return body.data;
 }
+
+export interface ConsoleResponse {
+    /** HTTP status from the backend. */
+    status: number;
+    /** Parsed JSON body verbatim (data + errors), or raw text if not JSON. */
+    body: unknown;
+}
+
+/**
+ * Executes an operation for the GraphQL console page: returns the backend's
+ * response as-is (including `errors`) instead of throwing, so the user sees
+ * exactly what the API said. Only network failures throw.
+ */
+export async function executeForConsole(
+    query: string,
+    variables?: Record<string, unknown>
+): Promise<ConsoleResponse> {
+    const url = getEnv().BACKEND_GRAPHQL_URL;
+
+    let response: Response;
+    try {
+        response = await fetch(url, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ query, variables }),
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+        });
+    } catch (error) {
+        throw new BackendError(
+            'unreachable',
+            `Cannot reach riven-ts backend at ${url}: ${error instanceof Error ? error.message : String(error)}`
+        );
+    }
+
+    const text = await response.text();
+    try {
+        return { status: response.status, body: JSON.parse(text) };
+    } catch {
+        return { status: response.status, body: text };
+    }
+}
