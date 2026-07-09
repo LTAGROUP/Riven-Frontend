@@ -107,11 +107,60 @@ function toLibraryItem(row: MediaItemRow): LibraryItem {
     };
 }
 
-export async function fetchLibraryItemsFromDb(): Promise<LibraryItem[]> {
-    const result = await getPool().query<MediaItemRow>(
-        `select ${ITEM_COLUMNS} from media_item order by created_at desc limit 500`
-    );
-    return result.rows.map(toLibraryItem);
+export interface DbLibraryQuery {
+    /** Case-insensitive substring match on title / full title. */
+    search?: string;
+    /** Restrict to these item types (e.g. ['movie', 'show']). */
+    types?: string[];
+    state?: string;
+    /** 1-based page. */
+    page?: number;
+    pageSize?: number;
+}
+
+export interface DbLibraryPage {
+    items: LibraryItem[];
+    total: number;
+}
+
+const escapeLike = (value: string) => value.replace(/[\\%_]/g, '\\$&');
+
+export async function fetchLibraryItemsFromDb(query: DbLibraryQuery = {}): Promise<DbLibraryPage> {
+    const { search, types, state, page = 1, pageSize = 500 } = query;
+
+    const where: string[] = [];
+    const params: unknown[] = [];
+    if (search) {
+        params.push(`%${escapeLike(search)}%`);
+        where.push(`(title ilike $${params.length} or full_title ilike $${params.length})`);
+    }
+    if (types?.length) {
+        params.push(types);
+        where.push(`type = any($${params.length})`);
+    }
+    if (state) {
+        params.push(state);
+        where.push(`state = $${params.length}`);
+    }
+    const whereSql = where.length ? `where ${where.join(' and ')}` : '';
+
+    const db = getPool();
+    const [countResult, itemsResult] = await Promise.all([
+        db.query<{ total: number }>(
+            `select count(*)::int as total from media_item ${whereSql}`,
+            params
+        ),
+        db.query<MediaItemRow>(
+            `select ${ITEM_COLUMNS} from media_item ${whereSql}
+             order by created_at desc limit $${params.length + 1} offset $${params.length + 2}`,
+            [...params, pageSize, (page - 1) * pageSize]
+        )
+    ]);
+
+    return {
+        items: itemsResult.rows.map(toLibraryItem),
+        total: countResult.rows[0]?.total ?? 0
+    };
 }
 
 export interface DbItemDetail {

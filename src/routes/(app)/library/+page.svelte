@@ -1,10 +1,11 @@
 <script lang="ts">
-    import { Info, RotateCcw, Search, Trash2 } from '@lucide/svelte';
+    import { ChevronLeft, ChevronRight, Info, RotateCcw, Search, Trash2 } from '@lucide/svelte';
     import { SvelteSet } from 'svelte/reactivity';
     import { toast } from 'svelte-sonner';
 
     import { enhance } from '$app/forms';
-    import { invalidateAll } from '$app/navigation';
+    import { goto, invalidateAll } from '$app/navigation';
+    import { page } from '$app/state';
 
     import CapabilityGate from '$lib/components/capability-gate.svelte';
     import PosterCard from '$lib/components/poster-card.svelte';
@@ -21,24 +22,39 @@
 
     const capabilities = $derived(getCapabilities());
 
-    let search = $state('');
-    let stateFilter = $state<string>('all');
-    let typeFilter = $state<string>('primary');
+    let search = $state(page.url.searchParams.get('q') ?? '');
+    let stateFilter = $state<string>(page.url.searchParams.get('state') ?? 'all');
+    let typeFilter = $state<string>(page.url.searchParams.get('type') ?? 'primary');
     const selected = new SvelteSet<string>();
     let selectionMode = $state(false);
 
-    const filtered = $derived.by(() => {
-        const query = search.trim().toLowerCase();
-        return data.items.filter((item) => {
-            if (typeFilter === 'primary' && item.type !== 'movie' && item.type !== 'show')
-                return false;
-            if (typeFilter !== 'primary' && typeFilter !== 'all' && item.type !== typeFilter)
-                return false;
-            if (stateFilter !== 'all' && item.state !== stateFilter) return false;
-            if (query && !item.title.toLowerCase().includes(query)) return false;
-            return true;
-        });
-    });
+    // Filtering and pagination run server-side (the whole library is searched,
+    // not just the loaded page) — inputs navigate with updated query params.
+    function applyFilters() {
+        const params = new URLSearchParams(page.url.searchParams);
+        const set = (key: string, value: string, blank: string) =>
+            value && value !== blank ? params.set(key, value) : params.delete(key);
+        set('q', search.trim(), '');
+        set('type', typeFilter, 'primary');
+        set('state', stateFilter, 'all');
+        params.delete('page');
+        goto(`?${params}`, { keepFocus: true, replaceState: true, noScroll: true });
+    }
+
+    let searchTimer: ReturnType<typeof setTimeout>;
+    function onSearchInput() {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(applyFilters, 300);
+    }
+
+    const pageCount = $derived(Math.max(1, Math.ceil(data.total / data.pageSize)));
+
+    function pageHref(target: number) {
+        const params = new URLSearchParams(page.url.searchParams);
+        if (target > 1) params.set('page', String(target));
+        else params.delete('page');
+        return `?${params}`;
+    }
 
     function toggleSelected(id: string, value: boolean) {
         if (value) selected.add(id);
@@ -77,10 +93,15 @@
             <Search
                 class="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
             />
-            <Input bind:value={search} placeholder="Search titles…" class="w-48 pl-8 md:w-64" />
+            <Input
+                bind:value={search}
+                oninput={onSearchInput}
+                placeholder="Search titles…"
+                class="w-48 pl-8 md:w-64"
+            />
         </div>
 
-        <Select.Root type="single" bind:value={typeFilter}>
+        <Select.Root type="single" bind:value={typeFilter} onValueChange={applyFilters}>
             <Select.Trigger class="w-40">{typeLabel}</Select.Trigger>
             <Select.Content>
                 {#each typeOptions as option (option.value)}
@@ -89,7 +110,7 @@
             </Select.Content>
         </Select.Root>
 
-        <Select.Root type="single" bind:value={stateFilter}>
+        <Select.Root type="single" bind:value={stateFilter} onValueChange={applyFilters}>
             <Select.Trigger class="w-36">{stateLabel}</Select.Trigger>
             <Select.Content>
                 {#each stateOptions as option (option.value)}
@@ -109,26 +130,16 @@
         </Button>
     </div>
 
-    {#if data.source === 'database'}
-        <div
-            class="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-300"
-        >
-            <Info class="mt-0.5 size-4 shrink-0" />
-            <span>
-                riven-ts's <code class="font-mono">mediaItems</code> API is currently broken upstream
-                — this listing is read directly from Riven's database instead. Everything is up to date;
-                actions still go through the API.
-            </span>
-        </div>
-    {:else if !capabilities.hasMediaItemsPagination}
+    {#if data.source === 'graphql' && !capabilities.hasMediaItemsPagination}
         <div
             class="flex items-start gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-300"
         >
             <Info class="mt-0.5 size-4 shrink-0" />
             <span>
                 riven-ts currently returns at most 25 library items and doesn't support server-side
-                filtering yet — this view shows the latest items only and will expand automatically
-                once the backend adds pagination.
+                filtering yet — search only covers these latest items. Set
+                <code class="font-mono">RIVEN_DATABASE_URL</code> to search and browse the full library
+                directly from Riven's database.
             </span>
         </div>
     {/if}
@@ -184,7 +195,7 @@
         </div>
     {/if}
 
-    {#if filtered.length === 0}
+    {#if data.items.length === 0}
         <div
             class="flex h-48 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
         >
@@ -194,7 +205,7 @@
         <div
             class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8"
         >
-            {#each filtered as item (item.id)}
+            {#each data.items as item (item.id)}
                 <div class="relative">
                     {#if selectionMode}
                         <div class="absolute top-2 right-2 z-10 rounded-md bg-black/70 p-1">
@@ -219,4 +230,35 @@
             {/each}
         </div>
     {/if}
+
+    <div class="flex items-center justify-between text-sm text-muted-foreground">
+        <span>
+            {data.total} item{data.total === 1 ? '' : 's'}
+            {#if pageCount > 1}
+                · page {data.page} of {pageCount}
+            {/if}
+        </span>
+        {#if pageCount > 1}
+            <span class="flex items-center gap-1">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    href={data.page > 1 ? pageHref(data.page - 1) : undefined}
+                    disabled={data.page <= 1}
+                >
+                    <ChevronLeft class="size-4" />
+                    Previous
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    href={data.page < pageCount ? pageHref(data.page + 1) : undefined}
+                    disabled={data.page >= pageCount}
+                >
+                    Next
+                    <ChevronRight class="size-4" />
+                </Button>
+            </span>
+        {/if}
+    </div>
 </div>

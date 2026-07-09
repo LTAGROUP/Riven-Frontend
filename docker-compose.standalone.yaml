@@ -27,8 +27,9 @@ services:
             # client IP from X-Forwarded-For instead of the proxy's address.
             - ADDRESS_HEADER=x-forwarded-for
             - XFF_DEPTH=1
-            # Optional, read-only: riven-ts's Postgres. Used as a library
-            # fallback while the backend's mediaItems query is broken upstream.
+            # Optional, read-only: riven-ts's Postgres. Enables full-library
+            # search/filtering/pagination (the GraphQL listing is capped at 25
+            # items and is currently broken upstream anyway).
             # e.g. postgresql://riven:<password>@riven-postgres:5432/riven
             - RIVEN_DATABASE_URL=${RIVEN_DATABASE_URL:-}
         networks:
