@@ -12,6 +12,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { GraphQLError } from 'graphql';
 import { createSchema, createYoga } from 'graphql-yoga';
 import { z } from 'zod';
 
@@ -22,8 +23,13 @@ const PLUGINS_ENABLED = process.env.MOCK_PLUGINS !== 'none';
 // Simulates the upstream riven-ts bug where interface/union type resolution
 // fails (https://github.com/rivenmedia/riven-ts): MOCK_BROKEN_MEDIAITEMS=1
 const BROKEN_MEDIA_ITEMS = process.env.MOCK_BROKEN_MEDIAITEMS === '1';
+// Simulates riven-ts applying a reset but failing to serialize the *reply*
+// ("Collection<Stream> ... not initialized"): MOCK_BROKEN_RESET=1
+const BROKEN_RESET = process.env.MOCK_BROKEN_RESET === '1';
+// GraphQLError so yoga doesn't mask the message ("Unexpected error.") — the
+// real backend (Apollo) sends these messages through verbatim.
 const upstreamBugError = () =>
-    new Error(
+    new GraphQLError(
         'Cannot resolve type for interface MediaItem! You need to return instance of object type class, not a plain object!'
     );
 
@@ -247,6 +253,13 @@ const yoga = createYoga({
                     console.log(
                         `[mock] resetMediaItem: ${item.title} (+${reset.length - 1} children)`
                     );
+                    if (BROKEN_RESET) {
+                        // Reset has been applied above — fail only the reply,
+                        // like riven-ts does.
+                        throw new GraphQLError(
+                            `Collection<Stream> of entity ${item.type === 'movie' ? 'Movie' : 'Show'}[${item.id}] not initialized`
+                        );
+                    }
                     return reset.map(decorate);
                 },
                 saveStreamUrl: (_: unknown, { id, url }: { id: string; url: string }) => {

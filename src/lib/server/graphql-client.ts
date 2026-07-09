@@ -21,6 +21,20 @@ interface GraphQLResponse<T> {
     errors?: { message: string }[];
 }
 
+/**
+ * True for riven-ts's known broken-response bugs: the operation itself runs,
+ * but serializing the reply fails (unresolvable interface/union types,
+ * uninitialized MikroORM collections). For mutations this means the change was
+ * applied even though the backend returned an error.
+ */
+export function isBrokenResponseError(error: unknown): boolean {
+    return (
+        error instanceof BackendError &&
+        error.kind === 'graphql' &&
+        /Cannot resolve type for|Collection<.+> of entity .+ not initialized/i.test(error.message)
+    );
+}
+
 /** Executes a typed GraphQL operation against the riven-ts backend. */
 export async function execute<TResult, TVariables>(
     document: TypedDocumentString<TResult, TVariables>,

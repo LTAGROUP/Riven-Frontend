@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
 
 import { ResetMediaItemMutation } from '$lib/graphql/operations/media';
-import { execute } from '$lib/server/graphql-client';
+import { execute, isBrokenResponseError } from '$lib/server/graphql-client';
 import { getLibraryPage } from '$lib/server/library';
 
 import type { Actions, PageServerLoad } from './$types';
@@ -37,7 +37,11 @@ export const actions: Actions = {
         const results = await Promise.allSettled(
             ids.map((id) => execute(ResetMediaItemMutation, { id }))
         );
-        const failed = results.filter((r) => r.status === 'rejected').length;
+        // Broken-response rejections mean the reset applied but riven-ts
+        // failed to serialize the reply (known upstream bug) — count as reset.
+        const failed = results.filter(
+            (r) => r.status === 'rejected' && !isBrokenResponseError(r.reason)
+        ).length;
 
         return {
             reset: ids.length - failed,

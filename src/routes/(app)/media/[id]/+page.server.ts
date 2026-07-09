@@ -6,7 +6,7 @@ import {
     SaveStreamUrlMutation
 } from '$lib/graphql/operations/media';
 import { dbConfigured, fetchItemDetailFromDb, type DbItemDetail } from '$lib/server/db';
-import { BackendError, execute } from '$lib/server/graphql-client';
+import { BackendError, execute, isBrokenResponseError } from '$lib/server/graphql-client';
 
 import type { MediaItemByIdQuery as MediaItemByIdResult } from '$lib/graphql/generated/graphql';
 import type { Actions, PageServerLoad } from './$types';
@@ -142,6 +142,15 @@ export const actions: Actions = {
             await execute(ResetMediaItemMutation, { id: params.id });
             return { message: 'Item reset — it will be re-processed from scratch.' };
         } catch (cause) {
+            // riven-ts often fails to serialize the mutation *reply* (broken
+            // type resolution upstream) after the reset has already applied —
+            // don't report that as a failure.
+            if (isBrokenResponseError(cause)) {
+                return {
+                    message:
+                        'Item reset — it will be re-processed from scratch. (riven-ts could not confirm due to a known bug, but the reset applies.)'
+                };
+            }
             return fail(500, {
                 message: cause instanceof BackendError ? cause.message : 'Reset failed'
             });
