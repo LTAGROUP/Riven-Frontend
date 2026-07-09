@@ -1,6 +1,7 @@
 <script lang="ts">
     import {
         Compass,
+        Database,
         FileText,
         FolderTree,
         Gauge,
@@ -27,6 +28,7 @@
         { href: '/summary', label: 'Summary', icon: Gauge },
         { href: '/vfs', label: 'Files', icon: FolderTree },
         { href: '/logs', label: 'Logs', icon: FileText },
+        { href: '/database', label: 'Database', icon: Database },
         { href: '/settings', label: 'Settings', icon: Settings }
     ];
 

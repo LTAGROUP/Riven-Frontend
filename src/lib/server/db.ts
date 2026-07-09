@@ -163,6 +163,71 @@ export async function fetchLibraryItemsFromDb(query: DbLibraryQuery = {}): Promi
     };
 }
 
+export interface DbTable {
+    name: string;
+    /** Estimated live rows (pg_stat_user_tables, cheap but approximate). */
+    rows: number;
+}
+
+export async function listDbTables(): Promise<DbTable[]> {
+    const result = await getPool().query<{ name: string; rows: string }>(
+        `select relname as name, n_live_tup as rows from pg_stat_user_tables order by relname`
+    );
+    return result.rows.map((row) => ({ name: row.name, rows: Number(row.rows) }));
+}
+
+export interface SqlResult {
+    /** e.g. SELECT, UPDATE — what the statement did. */
+    command: string;
+    rowCount: number;
+    columns: string[];
+    /** Cell values pre-rendered as strings; null cells are null. */
+    rows: (string | null)[][];
+    /** True when rows were cut off at the display cap. */
+    truncated: boolean;
+}
+
+const SQL_MAX_ROWS = 500;
+const SQL_TIMEOUT_MS = 15_000;
+
+function renderCell(value: unknown): string | null {
+    if (value === null || value === undefined) return null;
+    if (value instanceof Date) return value.toISOString();
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+}
+
+/**
+ * Runs user-supplied SQL for the database console page. Wrapped in a single
+ * transaction that is READ ONLY unless writes are explicitly allowed, with a
+ * statement timeout so a bad query can't hang the pool.
+ */
+export async function runSql(sql: string, options: { readOnly: boolean }): Promise<SqlResult[]> {
+    const client = await getPool().connect();
+    try {
+        await client.query(options.readOnly ? 'begin transaction read only' : 'begin');
+        await client.query(`set local statement_timeout = ${SQL_TIMEOUT_MS}`);
+        // Multi-statement input makes pg return an array of results.
+        const outcome = (await client.query(sql)) as pg.QueryResult | pg.QueryResult[];
+        await client.query('commit');
+        const results = Array.isArray(outcome) ? outcome : [outcome];
+        return results.map((result) => ({
+            command: result.command,
+            rowCount: result.rowCount ?? result.rows.length,
+            columns: result.fields.map((field) => field.name),
+            rows: result.rows
+                .slice(0, SQL_MAX_ROWS)
+                .map((row) => result.fields.map((field) => renderCell(row[field.name]))),
+            truncated: result.rows.length > SQL_MAX_ROWS
+        }));
+    } catch (cause) {
+        await client.query('rollback').catch(() => {});
+        throw cause;
+    } finally {
+        client.release();
+    }
+}
+
 export interface DbItemDetail {
     item: LibraryItem & {
         network: string | null;
