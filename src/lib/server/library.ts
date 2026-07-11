@@ -17,30 +17,35 @@ export interface LibraryResult {
  * broken upstream: "Cannot resolve type for interface MediaItem").
  */
 export async function getLibraryItems(): Promise<LibraryResult> {
-    let graphqlError: string;
-    try {
-        const result = await execute(LibraryItemsQuery);
-        return { items: result.mediaItems as LibraryItem[], source: 'graphql', error: null };
-    } catch (cause) {
-        graphqlError = cause instanceof BackendError ? cause.message : 'Failed to load library';
-    }
-
+    // Prefer the database when it is available. The GraphQL mediaItems field is
+    // currently capped at 25 entries, which makes consumers such as Explore
+    // incorrectly treat older library items as missing.
+    let dbError: string | undefined;
     if (dbConfigured()) {
         try {
-            const { items } = await fetchLibraryItemsFromDb();
+            const { items } = await fetchLibraryItemsFromDb({ pageSize: 10_000 });
             return { items, source: 'database', error: null };
         } catch (cause) {
-            return {
-                items: [],
-                source: 'none',
-                error: `${graphqlError} (database fallback also failed: ${
-                    cause instanceof Error ? cause.message : String(cause)
-                })`
-            };
+            dbError = cause instanceof Error ? cause.message : String(cause);
         }
     }
 
-    return { items: [], source: 'none', error: graphqlError };
+    try {
+        const result = await execute(LibraryItemsQuery);
+        return {
+            items: result.mediaItems as LibraryItem[],
+            source: 'graphql',
+            error: dbError ? `Database query failed (${dbError}); showing a limited listing.` : null
+        };
+    } catch (cause) {
+        const graphqlError =
+            cause instanceof BackendError ? cause.message : 'Failed to load library';
+        return {
+            items: [],
+            source: 'none',
+            error: dbError ? `${graphqlError} (database also failed: ${dbError})` : graphqlError
+        };
+    }
 }
 
 export interface LibraryPageOptions {

@@ -124,7 +124,9 @@ export const load: PageServerLoad = async ({ params }) => {
                       id: item.id,
                       type: item.type,
                       tmdbId: item.__typename === 'Movie' ? item.tmdbId : undefined,
-                      tvdbId: item.__typename === 'Episode' ? item.tvdbId : undefined
+                      tvdbId: item.__typename === 'Episode' ? item.tvdbId : undefined,
+                      showTvdbId:
+                          item.__typename === 'Episode' ? item.season.show.tvdbId : undefined
                   })
                 : {};
         return { item, limited: false, fileNames };

@@ -555,7 +555,7 @@ export type MediaItemByIdQuery = {
                   __typename?: 'Season';
                   id: string;
                   number: number;
-                  show: { __typename?: 'Show'; id: string; title: string };
+                  show: { __typename?: 'Show'; id: string; title: string; tvdbId: string };
               };
               filesystemEntries: Array<{
                   __typename?: 'FileSystemEntry';
@@ -1142,6 +1142,7 @@ export const MediaItemByIdDocument = new TypedDocumentString(`
         show {
           id
           title
+          tvdbId
         }
       }
       filesystemEntries {

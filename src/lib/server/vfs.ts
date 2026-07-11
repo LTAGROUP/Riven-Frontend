@@ -7,6 +7,7 @@ interface MediaItemReference {
     type: string;
     tmdbId?: string;
     tvdbId?: string;
+    showTvdbId?: string;
 }
 
 const DIRECTORY_MODE_MASK = 0o170000;
@@ -16,7 +17,11 @@ const MAX_FILES = 500;
 
 function mediaRootMarker(item: MediaItemReference): string | null {
     if (item.type === 'movie' && item.tmdbId) return `{tmdb-${item.tmdbId}}`;
-    if (item.type !== 'movie' && item.tvdbId) return `{tvdb-${item.tvdbId}}`;
+    // Show VFS roots use the series TVDB id. Episode.tvdbId identifies the
+    // episode itself, so use the parent show's id when resolving its files.
+    if (item.type !== 'movie' && (item.showTvdbId || item.tvdbId)) {
+        return `{tvdb-${item.showTvdbId || item.tvdbId}}`;
+    }
     return null;
 }
 

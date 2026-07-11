@@ -106,6 +106,7 @@ export const MediaItemByIdQuery = graphql(`
                     show {
                         id
                         title
+                        tvdbId
                     }
                 }
                 filesystemEntries {
