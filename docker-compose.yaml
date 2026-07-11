@@ -31,6 +31,8 @@ services:
             # and the Database console page.
             # e.g. postgresql://riven:<password>@riven-postgres:5432/riven
             - RIVEN_DATABASE_URL=${RIVEN_DATABASE_URL:-}
+            - RIVEN_CONTAINER_NAME=${RIVEN_CONTAINER_NAME:-riven}
+            - RIVEN_REDIS_CONTAINER_NAME=${RIVEN_REDIS_CONTAINER_NAME:-riven-redis}
             # Must match the URL you open in the browser (or your reverse-proxy
             # public URL), otherwise form submissions fail with 403.
             - ORIGIN=${ORIGIN:-http://localhost:3001}
@@ -38,6 +40,8 @@ services:
             # client IP from X-Forwarded-For instead of the proxy's address.
             - ADDRESS_HEADER=x-forwarded-for
             - XFF_DEPTH=1
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
         networks:
             - riven-net
 

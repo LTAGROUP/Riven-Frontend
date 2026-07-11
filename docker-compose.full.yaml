@@ -19,11 +19,15 @@ services:
             - AUTH_SECRET=${AUTH_SECRET:?set AUTH_SECRET in .env}
             - BACKEND_GRAPHQL_URL=http://riven:3000/
             - TMDB_READ_ACCESS_TOKEN=${TMDB_READ_ACCESS_TOKEN:-}
+            - RIVEN_CONTAINER_NAME=${RIVEN_CONTAINER_NAME:-riven}
+            - RIVEN_REDIS_CONTAINER_NAME=${RIVEN_REDIS_CONTAINER_NAME:-riven-cache}
             # IMPORTANT: must match the URL you open in the browser, or form
             # submissions are rejected (SvelteKit CSRF protection).
             - ORIGIN=${ORIGIN:-http://localhost:3001}
         depends_on:
             - riven
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
 
     riven:
         image: ghcr.io/rivenmedia/riven-ts:main

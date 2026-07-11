@@ -36,6 +36,10 @@ services:
             # items and is currently broken upstream anyway).
             # e.g. postgresql://riven:<password>@riven-postgres:5432/riven
             - RIVEN_DATABASE_URL=${RIVEN_DATABASE_URL:-}
+            - RIVEN_CONTAINER_NAME=${RIVEN_CONTAINER_NAME:-riven}
+            - RIVEN_REDIS_CONTAINER_NAME=${RIVEN_REDIS_CONTAINER_NAME:-riven-redis}
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
         networks:
             - riven-net
 

@@ -17,7 +17,9 @@ const EnvSchema = z.object({
     RIVEN_DATABASE_URL: z
         .string()
         .optional()
-        .transform((v) => (v === '' ? undefined : v))
+        .transform((v) => (v === '' ? undefined : v)),
+    RIVEN_CONTAINER_NAME: z.string().min(1).default('riven'),
+    RIVEN_REDIS_CONTAINER_NAME: z.string().min(1).default('riven-redis')
 });
 
 export type Env = z.infer<typeof EnvSchema>;
@@ -36,7 +38,9 @@ export function getEnv(): Env {
             AUTH_SECRET: 'build-secret-build-secret-build-secret',
             BACKEND_GRAPHQL_URL: 'http://localhost:3000/',
             TMDB_READ_ACCESS_TOKEN: undefined,
-            RIVEN_DATABASE_URL: undefined
+            RIVEN_DATABASE_URL: undefined,
+            RIVEN_CONTAINER_NAME: 'riven',
+            RIVEN_REDIS_CONTAINER_NAME: 'riven-redis'
         };
     }
     if (!cached) {

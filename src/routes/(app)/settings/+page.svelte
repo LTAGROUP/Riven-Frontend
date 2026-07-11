@@ -1,6 +1,8 @@
 <script lang="ts">
-    import { Copy, Download, TriangleAlert, Upload } from '@lucide/svelte';
+    import { Copy, Download, RotateCw, Trash2, TriangleAlert, Upload } from '@lucide/svelte';
     import { toast } from 'svelte-sonner';
+    import { enhance } from '$app/forms';
+    import type { SubmitFunction } from '@sveltejs/kit';
 
     import SettingField from '$lib/components/setting-field.svelte';
     import { Button } from '$lib/components/ui/button';
@@ -45,6 +47,28 @@
     let enabledPlugins = $state<string[]>(draft.enabledPlugins);
     let importOpen = $state(false);
     let importText = $state('');
+    let managementBusy = $state(false);
+
+    function managementAction(confirmMessage: string): SubmitFunction {
+        return ({ cancel }) => {
+            if (!window.confirm(confirmMessage)) {
+                cancel();
+                return;
+            }
+            managementBusy = true;
+            return async ({ result, update }) => {
+                managementBusy = false;
+                if (result.type === 'success') {
+                    toast.success(String(result.data?.message ?? 'Action completed'));
+                } else if (result.type === 'failure') {
+                    toast.error(String(result.data?.message ?? 'Action failed'));
+                } else if (result.type === 'error') {
+                    toast.error('Action failed');
+                }
+                await update({ reset: false });
+            };
+        };
+    }
 
     $effect(() => {
         const snapshot = JSON.stringify({ values, enabledPlugins });
@@ -164,6 +188,39 @@
                                 onChange={(next) => setValue(valueKey(null, def.key), next)}
                             />
                         {/each}
+                    </Card.Content>
+                </Card.Root>
+
+                <Card.Root class="border-destructive/40">
+                    <Card.Header>
+                        <Card.Title>Service management</Card.Title>
+                        <Card.Description>
+                            These actions operate directly on the Riven Docker containers.
+                        </Card.Description>
+                    </Card.Header>
+                    <Card.Content class="flex flex-wrap gap-2">
+                        <form
+                            method="POST"
+                            action="?/restart"
+                            use:enhance={managementAction('Restart Riven now?')}
+                        >
+                            <Button type="submit" variant="outline" disabled={managementBusy}>
+                                <RotateCw class="size-4" />
+                                Restart Riven
+                            </Button>
+                        </form>
+                        <form
+                            method="POST"
+                            action="?/clearCache"
+                            use:enhance={managementAction(
+                                'Clear the entire Redis cache? This cannot be undone.'
+                            )}
+                        >
+                            <Button type="submit" variant="destructive" disabled={managementBusy}>
+                                <Trash2 class="size-4" />
+                                Clear Redis cache
+                            </Button>
+                        </form>
                     </Card.Content>
                 </Card.Root>
             </Tabs.Content>
