@@ -16,6 +16,14 @@ export interface VfsEntryRow {
 
 const S_IFDIR = 0o040000;
 
+function absoluteEntryPath(directory: string, entry: string): string {
+    const normalizedEntry = entry.replace(/\\/g, '/');
+    if (normalizedEntry.startsWith('/')) return normalizedEntry;
+
+    const base = directory === '/' ? '' : directory.replace(/\/+$/, '');
+    return `${base}/${normalizedEntry.replace(/^\/+/, '')}`;
+}
+
 export const load: PageServerLoad = async ({ params }) => {
     const capabilities = await getCapabilities();
     if (!capabilities.hasVfs) {
@@ -27,7 +35,8 @@ export const load: PageServerLoad = async ({ params }) => {
     try {
         const dir = await execute(VfsDirQuery, { path });
         const entries = await Promise.all(
-            dir.vfsDirectoryEntryPaths.map(async (entryPath): Promise<VfsEntryRow> => {
+            dir.vfsDirectoryEntryPaths.map(async (rawEntryPath): Promise<VfsEntryRow> => {
+                const entryPath = absoluteEntryPath(path, rawEntryPath);
                 const name = entryPath.split('/').filter(Boolean).pop() ?? entryPath;
                 try {
                     const stat = await execute(VfsStatQuery, { path: entryPath });

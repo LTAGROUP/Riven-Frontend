@@ -7,13 +7,20 @@
 
     let { data }: { data: PageData } = $props();
 
+    function vfsHref(path: string): string {
+        return `/vfs${path
+            .split('/')
+            .map((part) => encodeURIComponent(part))
+            .join('/')}`;
+    }
+
     const crumbs = $derived.by(() => {
         const parts = data.path.split('/').filter(Boolean);
         const result = [{ label: 'vfs', href: '/vfs' }];
         let acc = '';
         for (const part of parts) {
             acc += '/' + part;
-            result.push({ label: part, href: '/vfs' + acc });
+            result.push({ label: part, href: vfsHref(acc) });
         }
         return result;
     });
@@ -58,7 +65,7 @@
                 {#each data.entries as entry (entry.path)}
                     <svelte:element
                         this={entry.isDirectory ? 'a' : 'div'}
-                        href={entry.isDirectory ? `/vfs${entry.path}` : undefined}
+                        href={entry.isDirectory ? vfsHref(entry.path) : undefined}
                         class={`flex items-center gap-3 px-3 py-2 text-sm ${entry.isDirectory ? 'hover:bg-accent/50' : ''}`}
                     >
                         {#if entry.isDirectory}
