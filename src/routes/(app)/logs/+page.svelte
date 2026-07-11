@@ -35,10 +35,12 @@
         <Card.Header>
             <Card.Title>Share logs</Card.Title>
             <Card.Description>
-                riven-ts doesn't stream logs to clients yet — view live logs with
-                <code class="font-mono">docker logs -f riven</code>. What it can do is upload the
-                last 24 hours of logs to the Riven team's log service and give you a session id to
-                share when asking for support.
+                riven-ts writes rotated log files when the file transport is enabled. If your
+                deployment stores them on the host under
+                <code class="font-mono">/riven/logs/ecs</code>, follow the current JSON log with
+                <code class="font-mono">tail -F /riven/logs/ecs/ecs.json</code>. The web UI does not
+                stream those files yet. This action uploads the last 24 hours of logs to the Riven
+                team's log service and gives you a session id to share when asking for support.
             </Card.Description>
         </Card.Header>
         <Card.Content class="space-y-4">
