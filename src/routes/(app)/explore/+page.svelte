@@ -13,7 +13,7 @@
     let { data }: { data: PageData } = $props();
 
     const capabilities = $derived(getCapabilities());
-    const libraryIds = $derived(new Set(data.libraryIds));
+    const libraryStates = $derived(data.libraryStates);
 
     interface SearchResult {
         id: number;
@@ -93,6 +93,16 @@
         };
     }
 
+    function libraryStateFor(result: SearchResult): string | null {
+        if (result.media_type === 'movie') {
+            return libraryStates[`movie:${result.id}`] ?? null;
+        }
+        if (result.media_type === 'tv') {
+            return libraryStates[`show:title:${(result.name ?? '').trim().toLowerCase()}`] ?? null;
+        }
+        return null;
+    }
+
     const showingSearch = $derived(query.trim().length > 0);
 </script>
 
@@ -147,8 +157,7 @@
                     class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
                 >
                     {#each results as result (result.media_type + ':' + result.id)}
-                        {@const inLibrary =
-                            result.media_type === 'movie' && libraryIds.has(`movie:${result.id}`)}
+                        {@const libraryState = libraryStateFor(result)}
                         <div class="group relative">
                             <PosterCard
                                 title={result.title ?? result.name ?? 'Untitled'}
@@ -158,7 +167,8 @@
                                 ) || null}
                                 type={result.media_type === 'tv' ? 'show' : 'movie'}
                                 href={`/explore/${result.media_type}/${result.id}`}
-                                note={inLibrary
+                                state={libraryState}
+                                note={libraryState
                                     ? 'In library'
                                     : result.media_type === 'tv'
                                       ? 'Show'
@@ -200,6 +210,7 @@
                     class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
                 >
                     {#each data.trending as movie (movie.id)}
+                        {@const libraryState = libraryStates[`movie:${movie.id}`] ?? null}
                         <div class="group relative">
                             <PosterCard
                                 title={movie.title ?? movie.name ?? 'Untitled'}
@@ -209,6 +220,8 @@
                                 ) || null}
                                 type="movie"
                                 href={`/explore/movie/${movie.id}`}
+                                state={libraryState}
+                                note={libraryState ? 'In library' : undefined}
                             />
                             <div
                                 class="absolute inset-x-2 bottom-14 opacity-0 transition-opacity group-hover:opacity-100"

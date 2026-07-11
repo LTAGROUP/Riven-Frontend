@@ -56,6 +56,7 @@ export const load: PageServerLoad = async ({ params }) => {
     // Best-effort library match so the page can link to the item instead of
     // offering a duplicate request.
     let libraryItemId: string | null = null;
+    let libraryItemState: string | null = null;
     try {
         const library = await getLibraryItems();
         const match = library.items.find((item) =>
@@ -66,9 +67,10 @@ export const load: PageServerLoad = async ({ params }) => {
                   item.tvdbId === String(details.external_ids.tvdb_id)
         );
         libraryItemId = match?.id ?? null;
+        libraryItemState = match?.state ?? null;
     } catch {
         // Library unavailable — the page still renders with a request button.
     }
 
-    return { mediaType, details, libraryItemId };
+    return { mediaType, details, libraryItemId, libraryItemState };
 };

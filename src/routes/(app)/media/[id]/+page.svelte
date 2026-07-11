@@ -32,6 +32,7 @@
     const files = $derived(
         item.__typename === 'Movie' || item.__typename === 'Episode' ? item.filesystemEntries : []
     );
+    const fileNames = $derived(data.fileNames);
 
     let resetDialogOpen = $state(false);
     let streamUrlDialogOpen = $state(false);
@@ -394,7 +395,9 @@
                     <div class="divide-y rounded-md border">
                         {#each files as file (file.id)}
                             <div class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                                <span class="capitalize">{file.type}</span>
+                                <span class="min-w-0 truncate font-mono text-xs sm:text-sm"
+                                    >{fileNames[file.id] ?? file.type}</span
+                                >
                                 <span class="flex items-center gap-4 text-muted-foreground">
                                     <span>{formatBytes(file.fileSize)}</span>
                                     <span class="hidden sm:inline"

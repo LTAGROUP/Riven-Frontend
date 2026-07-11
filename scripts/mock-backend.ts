@@ -102,6 +102,36 @@ function children(item: MockItem): MockItem[] {
         .sort((a, b) => (a.number ?? 0) - (b.number ?? 0));
 }
 
+function mediaItemForVfsPath(path: string): MockItem | null {
+    const tmdbId = /\{tmdb-(\d+)\}/.exec(path)?.[1];
+    if (tmdbId) {
+        return (
+            [...items.values()].find((item) => item.type === 'movie' && item.tmdbId === tmdbId) ??
+            null
+        );
+    }
+
+    const tvdbId = /\{tvdb-(\d+)\}/.exec(path)?.[1];
+    const show = tvdbId
+        ? [...items.values()].find((item) => item.type === 'show' && item.tvdbId === tvdbId)
+        : null;
+    if (!show) return null;
+
+    const episode = /s(\d+)e(\d+)/i.exec(path);
+    if (!episode) return show;
+
+    const seasonNumber = Number(episode[1]);
+    const episodeNumber = Number(episode[2]);
+    const season = children(show).find(
+        (item) => item.type === 'season' && item.number === seasonNumber
+    );
+    return season
+        ? (children(season).find(
+              (item) => item.type === 'episode' && item.number === episodeNumber
+          ) ?? null)
+        : null;
+}
+
 function decorate(item: MockItem): Record<string, unknown> {
     return {
         ...item,
@@ -241,7 +271,17 @@ const yoga = createYoga({
                     uid: 1000,
                     gid: 1000
                 }),
-                vfsEntry: () => null,
+                vfsEntry: (_: unknown, { path }: { path: string }) => {
+                    const item = mediaItemForVfsPath(path);
+                    const entry = item?.filesystemEntries.find((file) => file.type === 'media');
+                    return entry
+                        ? {
+                              ...entry,
+                              __typename: 'MediaEntry',
+                              mediaItem: () => decorate(item)
+                          }
+                        : null;
+                },
                 ...pluginResolvers.Query
             },
             Mutation: {

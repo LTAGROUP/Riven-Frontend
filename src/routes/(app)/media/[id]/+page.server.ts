@@ -7,6 +7,8 @@ import {
 } from '$lib/graphql/operations/media';
 import { dbConfigured, fetchItemDetailFromDb, type DbItemDetail } from '$lib/server/db';
 import { BackendError, execute, isBrokenResponseError } from '$lib/server/graphql-client';
+import { getVfsFileNamesForItem } from '$lib/server/vfs';
+import { getCapabilities } from '$lib/server/capabilities';
 
 import type { MediaItemByIdQuery as MediaItemByIdResult } from '$lib/graphql/generated/graphql';
 import type { Actions, PageServerLoad } from './$types';
@@ -112,7 +114,20 @@ export const load: PageServerLoad = async ({ params }) => {
     let graphqlFailure: BackendError | undefined;
     try {
         const result = await execute(MediaItemByIdQuery, { id: params.id });
-        return { item: result.mediaItemById, limited: false };
+        const item = result.mediaItemById;
+        const capabilities = await getCapabilities();
+        const fileNames =
+            capabilities.hasVfs &&
+            (item.__typename === 'Movie' || item.__typename === 'Episode') &&
+            item.filesystemEntries.length > 0
+                ? await getVfsFileNamesForItem({
+                      id: item.id,
+                      type: item.type,
+                      tmdbId: item.__typename === 'Movie' ? item.tmdbId : undefined,
+                      tvdbId: item.__typename === 'Episode' ? item.tvdbId : undefined
+                  })
+                : {};
+        return { item, limited: false, fileNames };
     } catch (cause) {
         if (cause instanceof BackendError) graphqlFailure = cause;
     }
@@ -127,7 +142,7 @@ export const load: PageServerLoad = async ({ params }) => {
     if (dbConfigured()) {
         try {
             const detail = await fetchItemDetailFromDb(params.id);
-            if (detail) return { item: synthesizeDetail(detail), limited: true };
+            if (detail) return { item: synthesizeDetail(detail), limited: true, fileNames: {} };
         } catch {
             // fall through to 404
         }

@@ -3,6 +3,7 @@
 
     import CapabilityGate from '$lib/components/capability-gate.svelte';
     import RequestDialog, { type RequestTarget } from '$lib/components/request-dialog.svelte';
+    import StateBadge from '$lib/components/state-badge.svelte';
     import { Button } from '$lib/components/ui/button';
     import { getCapabilities } from '$lib/capabilities-context';
     import { tmdbImage } from '$lib/media/images';
@@ -65,11 +66,7 @@
                         {data.mediaType === 'tv' ? 'Show' : 'Movie'}
                     </span>
                     {#if data.libraryItemId}
-                        <span
-                            class="rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-400"
-                        >
-                            In library
-                        </span>
+                        <StateBadge state={data.libraryItemState ?? 'unknown'} />
                     {/if}
                 </div>
                 <h1 class="text-3xl font-semibold">{title}</h1>

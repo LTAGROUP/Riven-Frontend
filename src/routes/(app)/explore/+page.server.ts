@@ -17,19 +17,26 @@ export const load: PageServerLoad = async () => {
         getLibraryItems()
     ]);
 
-    // ids already in the library, for "In library" badges on search results
-    const libraryIds = new Set<string>();
+    // States keyed by the identifiers available on TMDB cards. Movie IDs are
+    // exact; show titles are a fallback until a search result is opened and
+    // its TVDB external ID is available.
+    const libraryStates = new Map<string, string>();
     if (library.status === 'fulfilled') {
         for (const item of library.value.items) {
-            if (item.tmdbId) libraryIds.add(`movie:${item.tmdbId}`);
-            if (item.tvdbId && item.type === 'show') libraryIds.add(`tv:${item.tvdbId}`);
+            if (item.type === 'movie' && item.tmdbId) {
+                libraryStates.set(`movie:${item.tmdbId}`, item.state);
+            }
+            if (item.type === 'show') {
+                if (item.tvdbId) libraryStates.set(`show:tvdb:${item.tvdbId}`, item.state);
+                libraryStates.set(`show:title:${item.title.trim().toLowerCase()}`, item.state);
+            }
         }
     }
 
     return {
         tmdbConfigured: tmdbConfigured(),
         trending: trending.status === 'fulfilled' ? trending.value.results.slice(0, 18) : [],
-        libraryIds: [...libraryIds]
+        libraryStates: Object.fromEntries(libraryStates)
     };
 };
 
