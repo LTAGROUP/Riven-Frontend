@@ -26,3 +26,6 @@ vite.config.ts.timestamp-*
 # Logs
 logs
 *.log
+# The Logs UI route is source code, not runtime log output.
+!src/routes/(app)/logs/
+!src/routes/(app)/logs/**
