@@ -11,11 +11,21 @@
         type?: string;
         state?: string | null;
         href?: string;
+        rating?: number | null;
         /** Extra badge text (e.g. "In library") */
         note?: string | null;
     }
 
-    let { title, posterPath, year, type = 'movie', state: itemState, href, note }: Props = $props();
+    let {
+        title,
+        posterPath,
+        year,
+        type = 'movie',
+        state: itemState,
+        href,
+        rating,
+        note
+    }: Props = $props();
 
     const poster = $derived(tmdbImage(posterPath));
     let imageFailed = $state(false);
@@ -42,6 +52,14 @@
                 {:else}
                     <Tv class="size-10" />
                 {/if}
+            </div>
+        {/if}
+        {#if rating}
+            <div
+                class="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-xs text-white"
+            >
+                <span class="text-amber-300">★</span>
+                {rating.toFixed(1)}
             </div>
         {/if}
         {#if itemState}
