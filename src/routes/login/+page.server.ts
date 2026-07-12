@@ -11,15 +11,20 @@ import {
 
 import type { Actions, PageServerLoad } from './$types';
 
-function sanitizeNext(raw: string | null): string {
-    // Only allow same-origin absolute paths to prevent open redirects.
-    if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/';
-    return raw;
+function sanitizeNext(raw: string | null, origin: string): string {
+    if (!raw || !raw.startsWith('/') || raw.includes('\\')) return '/';
+    try {
+        const destination = new URL(raw, origin);
+        if (destination.origin !== origin) return '/';
+        return `${destination.pathname}${destination.search}${destination.hash}`;
+    } catch {
+        return '/';
+    }
 }
 
 export const load: PageServerLoad = async ({ locals, url }) => {
     if (locals.authenticated) {
-        redirect(303, sanitizeNext(url.searchParams.get('next')));
+        redirect(303, sanitizeNext(url.searchParams.get('next'), url.origin));
     }
     return {};
 };
@@ -55,6 +60,6 @@ export const actions: Actions = {
             maxAge
         });
 
-        redirect(303, sanitizeNext(url.searchParams.get('next')));
+        redirect(303, sanitizeNext(url.searchParams.get('next'), url.origin));
     }
 };

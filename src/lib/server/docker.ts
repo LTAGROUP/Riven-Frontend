@@ -1,22 +1,27 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-
 import { getEnv } from '$lib/server/env';
 
-const execFileAsync = promisify(execFile);
+const REQUEST_TIMEOUT_MS = 35_000;
 
-async function docker(args: string[]): Promise<string> {
-    const { stdout, stderr } = await execFileAsync('docker', args, {
-        timeout: 30_000,
-        maxBuffer: 1024 * 1024
+async function managementRequest(path: '/restart' | '/clear-cache'): Promise<void> {
+    const env = getEnv();
+    const response = await fetch(new URL(path, env.RIVEN_MANAGEMENT_URL), {
+        method: 'POST',
+        headers: { authorization: `Bearer ${env.AUTH_SECRET}` },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
     });
-    return (stdout || stderr).trim();
+
+    if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(
+            body?.message ?? `Management helper responded with HTTP ${response.status}`
+        );
+    }
 }
 
 export async function restartRiven(): Promise<void> {
-    await docker(['restart', getEnv().RIVEN_CONTAINER_NAME]);
+    await managementRequest('/restart');
 }
 
 export async function clearRedisCache(): Promise<void> {
-    await docker(['exec', getEnv().RIVEN_REDIS_CONTAINER_NAME, 'redis-cli', 'FLUSHALL']);
+    await managementRequest('/clear-cache');
 }

@@ -3,8 +3,20 @@ import { building } from '$app/environment';
 import { z } from 'zod';
 
 const EnvSchema = z.object({
-    FRONTEND_PASSWORD: z.string().min(1, 'FRONTEND_PASSWORD must be set'),
-    AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
+    FRONTEND_PASSWORD: z
+        .string()
+        .min(12, 'FRONTEND_PASSWORD must be at least 12 characters')
+        .refine(
+            (value) => value !== 'change-me',
+            'FRONTEND_PASSWORD must not use the example value'
+        ),
+    AUTH_SECRET: z
+        .string()
+        .min(32, 'AUTH_SECRET must be at least 32 characters')
+        .refine(
+            (value) => value !== 'please-generate-a-random-secret-at-least-32-chars',
+            'AUTH_SECRET must not use the public example value'
+        ),
     BACKEND_GRAPHQL_URL: z.url().default('http://localhost:3000/'),
     TMDB_READ_ACCESS_TOKEN: z
         .string()
@@ -18,8 +30,7 @@ const EnvSchema = z.object({
         .string()
         .optional()
         .transform((v) => (v === '' ? undefined : v)),
-    RIVEN_CONTAINER_NAME: z.string().min(1).default('riven'),
-    RIVEN_REDIS_CONTAINER_NAME: z.string().min(1).default('riven-redis')
+    RIVEN_MANAGEMENT_URL: z.url().optional().default('http://riven-management:3000')
 });
 
 export type Env = z.infer<typeof EnvSchema>;
@@ -39,8 +50,7 @@ export function getEnv(): Env {
             BACKEND_GRAPHQL_URL: 'http://localhost:3000/',
             TMDB_READ_ACCESS_TOKEN: undefined,
             RIVEN_DATABASE_URL: undefined,
-            RIVEN_CONTAINER_NAME: 'riven',
-            RIVEN_REDIS_CONTAINER_NAME: 'riven-redis'
+            RIVEN_MANAGEMENT_URL: 'http://riven-management:3000'
         };
     }
     if (!cached) {

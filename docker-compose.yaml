@@ -2,7 +2,7 @@
 # Updating is: git pull && docker compose up -d --build
 #
 # Setup (once):
-# 1. Copy .env.example to .env and fill in FRONTEND_PASSWORD / AUTH_SECRET
+# 1. Copy .env.example to .env and replace FRONTEND_PASSWORD / AUTH_SECRET
 #    (plus TMDB_READ_ACCESS_TOKEN and RIVEN_DATABASE_URL — both worth having).
 # 2. Tell it where riven-ts is, either:
 #    a) same Docker host — find riven's network and put it in .env:
@@ -12,15 +12,16 @@
 #       if your container is named differently), or
 #    b) reachable over the network — set BACKEND_GRAPHQL_URL to its URL and
 #       RIVEN_NETWORK to any existing network (e.g. bridge).
-# 3. docker compose up -d --build
-#
-# To run riven-ts AND the frontend from scratch, use docker-compose.full.yaml.
+# 3. Set ORIGIN to the exact public HTTPS URL when using a reverse proxy.
+# 4. docker compose up -d --build
 services:
     riven-frontend:
         build: .
         restart: unless-stopped
         ports:
-            - '3001:3000'
+            # Loopback-only by default. Put a TLS reverse proxy in front for a
+            # web-facing URL. Override only if you intentionally want LAN access.
+            - '${FRONTEND_BIND_ADDRESS:-127.0.0.1}:3001:3000'
         environment:
             - FRONTEND_PASSWORD=${FRONTEND_PASSWORD:?set FRONTEND_PASSWORD in .env}
             - AUTH_SECRET=${AUTH_SECRET:?set AUTH_SECRET in .env}
@@ -31,21 +32,44 @@ services:
             # and the Database console page.
             # e.g. postgresql://riven:<password>@riven-postgres:5432/riven
             - RIVEN_DATABASE_URL=${RIVEN_DATABASE_URL:-}
-            - RIVEN_CONTAINER_NAME=${RIVEN_CONTAINER_NAME:-riven}
-            - RIVEN_REDIS_CONTAINER_NAME=${RIVEN_REDIS_CONTAINER_NAME:-riven-redis}
+            - RIVEN_MANAGEMENT_URL=http://riven-management:3000
             # Must match the URL you open in the browser (or your reverse-proxy
             # public URL), otherwise form submissions fail with 403.
             - ORIGIN=${ORIGIN:-http://localhost:3001}
-            # Behind a reverse proxy (Caddy/nginx), rate-limit on the real
-            # client IP from X-Forwarded-For instead of the proxy's address.
-            - ADDRESS_HEADER=x-forwarded-for
-            - XFF_DEPTH=1
+            # Forwarded client-address headers are intentionally not trusted.
+            # The app therefore cannot have its login limiter bypassed by a
+            # forged X-Forwarded-For header.
+        depends_on:
+            - riven-management
+        networks:
+            - riven-net
+            - management
+
+    # A minimal sidecar owns the Docker socket. It exposes no host port and
+    # accepts only the two authenticated operations used by the Settings page.
+    riven-management:
+        build:
+            context: .
+            dockerfile: management-helper/Dockerfile
+        restart: unless-stopped
+        read_only: true
+        cap_drop:
+            - ALL
+        pids_limit: 64
+        security_opt:
+            - no-new-privileges:true
+        environment:
+            - MANAGEMENT_SECRET=${AUTH_SECRET:?set AUTH_SECRET in .env}
+            - RIVEN_CONTAINER_NAME=${RIVEN_CONTAINER_NAME:-riven}
+            - RIVEN_REDIS_CONTAINER_NAME=${RIVEN_REDIS_CONTAINER_NAME:-riven-redis}
         volumes:
             - /var/run/docker.sock:/var/run/docker.sock
         networks:
-            - riven-net
+            - management
 
 networks:
     riven-net:
         external: true
         name: ${RIVEN_NETWORK:?set RIVEN_NETWORK to the docker network riven-ts runs on}
+    management:
+        internal: true

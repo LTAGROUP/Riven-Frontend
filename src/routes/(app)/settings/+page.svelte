@@ -195,7 +195,7 @@
                     <Card.Header>
                         <Card.Title>Service management</Card.Title>
                         <Card.Description>
-                            These actions operate directly on the Riven Docker containers.
+                            These actions use the isolated Riven management helper.
                         </Card.Description>
                     </Card.Header>
                     <Card.Content class="flex flex-wrap gap-2">

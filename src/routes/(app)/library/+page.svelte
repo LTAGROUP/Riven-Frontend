@@ -1,6 +1,6 @@
 <script lang="ts">
     import { ChevronLeft, ChevronRight, Info, RotateCcw, Search, Trash2 } from '@lucide/svelte';
-    import { SvelteSet } from 'svelte/reactivity';
+    import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
     import { toast } from 'svelte-sonner';
 
     import { enhance } from '$app/forms';
@@ -31,7 +31,7 @@
     // Filtering and pagination run server-side (the whole library is searched,
     // not just the loaded page) — inputs navigate with updated query params.
     function applyFilters() {
-        const params = new URLSearchParams(page.url.searchParams);
+        const params = new SvelteURLSearchParams(page.url.searchParams);
         const set = (key: string, value: string, blank: string) =>
             value && value !== blank ? params.set(key, value) : params.delete(key);
         set('q', search.trim(), '');
@@ -50,7 +50,7 @@
     const pageCount = $derived(Math.max(1, Math.ceil(data.total / data.pageSize)));
 
     function pageHref(target: number) {
-        const params = new URLSearchParams(page.url.searchParams);
+        const params = new SvelteURLSearchParams(page.url.searchParams);
         if (target > 1) params.set('page', String(target));
         else params.delete('page');
         return `?${params}`;

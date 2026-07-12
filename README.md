@@ -17,6 +17,7 @@ rebuilt against the new Apollo GraphQL API.
   included)
 - **GraphQL** — run raw queries/mutations against the riven-ts API, with templates
 - **Settings** — full editor for riven-ts configuration that generates the `.env.riven` file
+- **Service management** — restart Riven and clear Redis through an isolated internal helper
 - **Logs** — upload logs for support via `shareLogs`
 - Single-password login, dark UI, Docker-ready
 
@@ -36,12 +37,17 @@ introspection) and degrades gracefully:
 | Live updates            | No subscriptions upstream; transitional items are polled every 15 s.                                                                                                                                                                                                                                |
 | **Broken `mediaItems`** | riven-ts `main` currently fails `mediaItems`/`mediaItemById` with "Cannot resolve type for interface MediaItem". Set `RIVEN_DATABASE_URL` (read-only Postgres access) and the frontend falls back to reading listings straight from Riven's database — GraphQL takes over automatically once fixed. |
 
+## Prerequisite
+
+Install and start riven-ts first. This repository intentionally does not install or publish the
+riven-ts backend, Postgres, or Redis; it only adds the frontend to an existing deployment.
+
 ## Quick start (Docker)
 
-For an **existing riven-ts deployment** (the default — frontend only):
+For an existing riven-ts deployment:
 
 ```bash
-cp .env.example .env        # set FRONTEND_PASSWORD, AUTH_SECRET, TMDB token,
+cp .env.example .env        # replace FRONTEND_PASSWORD and AUTH_SECRET; set TMDB token,
                             # RIVEN_DATABASE_URL, RIVEN_NETWORK (see .env.example
                             # and the header of docker-compose.yaml)
 docker compose up -d --build
@@ -53,14 +59,13 @@ Updating later is just:
 git pull && docker compose up -d --build
 ```
 
-To run **riven-ts and the frontend together from scratch**, use the full stack instead:
-
-```bash
-touch .env.riven            # or generate via the Settings page later
-docker compose -f docker-compose.full.yaml up -d
-```
-
 Open http://localhost:3001 and log in with `FRONTEND_PASSWORD`.
+
+The published port binds to `127.0.0.1` by default. For a web-facing URL, terminate HTTPS in a
+same-host reverse proxy and forward it to `http://127.0.0.1:3001`. Set `ORIGIN` to the exact public
+HTTPS origin. Do not configure the frontend to trust `X-Forwarded-For`; login attempts will then be
+rate-limited against the proxy address and cannot spoof their way around the limiter. A proxy-level
+rate limit is useful as an additional layer.
 
 > **ORIGIN matters:** `ORIGIN` must exactly match the URL you open in the browser
 > (scheme + host + port), otherwise every form action fails with a 403 (SvelteKit CSRF
@@ -68,19 +73,22 @@ Open http://localhost:3001 and log in with `FRONTEND_PASSWORD`.
 
 ### Environment variables
 
-| Var                      | Required  | Description                                                      |
-| ------------------------ | --------- | ---------------------------------------------------------------- |
-| `FRONTEND_PASSWORD`      | ✔         | Password for the web UI                                          |
-| `AUTH_SECRET`            | ✔         | ≥32 chars, signs session cookies (`openssl rand -base64 32`)     |
-| `BACKEND_GRAPHQL_URL`    |           | riven-ts GraphQL URL (default `http://localhost:3000/`)          |
-| `RIVEN_DATABASE_URL`     |           | riven-ts Postgres URL — full-library search + Database console   |
-| `RIVEN_NETWORK`          | ✔ default | Docker network your riven-ts runs on (default compose file only) |
-| `TMDB_READ_ACCESS_TOKEN` |           | TMDB v4 read token — enables search/trending/detail pages        |
-| `ORIGIN`                 | ✔ in prod | Public URL of this frontend                                      |
-| `PORT`                   |           | Listen port (default 3000)                                       |
+| Var                      | Required  | Description                                                    |
+| ------------------------ | --------- | -------------------------------------------------------------- |
+| `FRONTEND_PASSWORD`      | ✔         | Password for the web UI (minimum 12 characters)                |
+| `AUTH_SECRET`            | ✔         | ≥32 chars, signs session cookies (`openssl rand -base64 32`)   |
+| `BACKEND_GRAPHQL_URL`    |           | riven-ts GraphQL URL (default `http://localhost:3000/`)        |
+| `RIVEN_DATABASE_URL`     |           | riven-ts Postgres URL — full-library search + Database console |
+| `RIVEN_NETWORK`          | ✔         | Docker network your existing riven-ts container runs on        |
+| `TMDB_READ_ACCESS_TOKEN` |           | TMDB v4 read token — enables search/trending/detail pages      |
+| `ORIGIN`                 | ✔ in prod | Public URL of this frontend                                    |
+| `PORT`                   |           | Listen port (default 3000)                                     |
+| `FRONTEND_BIND_ADDRESS`  |           | Compose host bind address (default `127.0.0.1`)                |
 
-The backend is **never exposed to the browser** — all GraphQL and TMDB traffic flows through the
-frontend server, which holds the secrets.
+The backend is **never published by this repository** — all GraphQL and TMDB traffic flows through
+the authenticated frontend server. The frontend container runs as an unprivileged user and does not
+mount the Docker socket. A separate, unpublished management helper owns the socket and accepts only
+authenticated restart-Riven and clear-Redis operations.
 
 ## Development
 

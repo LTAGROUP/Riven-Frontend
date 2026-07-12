@@ -41,9 +41,9 @@ export const actions: Actions = {
                 response: JSON.stringify(response.body, null, 2),
                 hasErrors: Boolean(
                     typeof response.body === 'object' &&
-                        response.body !== null &&
-                        'errors' in response.body &&
-                        response.body.errors
+                    response.body !== null &&
+                    'errors' in response.body &&
+                    response.body.errors
                 ),
                 durationMs: Date.now() - startedAt
             };

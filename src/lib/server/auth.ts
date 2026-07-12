@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 import { getEnv } from './env';
 
@@ -11,9 +11,9 @@ function sign(payload: string): string {
 }
 
 function safeEqual(a: string, b: string): boolean {
-    const bufA = Buffer.from(a);
-    const bufB = Buffer.from(b);
-    if (bufA.length !== bufB.length) return false;
+    // Hash first so comparisons take the same path even when input lengths differ.
+    const bufA = createHash('sha256').update(a).digest();
+    const bufB = createHash('sha256').update(b).digest();
     return timingSafeEqual(bufA, bufB);
 }
 
@@ -37,8 +37,9 @@ export function verifySessionToken(token: string | undefined, now = Date.now()):
     if (parts.length !== 3) return false;
     const [version, expiresRaw, signature] = parts;
     if (version !== SESSION_VERSION) return false;
-    const expires = Number.parseInt(expiresRaw, 10);
-    if (!Number.isFinite(expires) || expires * 1000 < now) return false;
+    if (!/^\d+$/.test(expiresRaw)) return false;
+    const expires = Number(expiresRaw);
+    if (!Number.isSafeInteger(expires) || expires * 1000 < now) return false;
     return safeEqual(signature, sign(`${version}.${expiresRaw}`));
 }
 
