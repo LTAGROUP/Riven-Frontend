@@ -61,11 +61,10 @@ git pull && docker compose up -d --build
 
 Open http://localhost:3001 and log in with `FRONTEND_PASSWORD`.
 
-The published port binds to `127.0.0.1` by default. For a web-facing URL, terminate HTTPS in a
-same-host reverse proxy and forward it to `http://127.0.0.1:3001`. Set `ORIGIN` to the exact public
-HTTPS origin. Do not configure the frontend to trust `X-Forwarded-For`; login attempts will then be
-rate-limited against the proxy address and cannot spoof their way around the limiter. A proxy-level
-rate limit is useful as an additional layer.
+For a web-facing URL, terminate HTTPS in a reverse proxy and forward it to port 3001. Set `ORIGIN`
+to the exact public HTTPS origin. Do not configure the frontend to trust `X-Forwarded-For`; login
+attempts will then be rate-limited against the direct peer or proxy address and cannot spoof their
+way around the limiter. A proxy-level rate limit is useful as an additional layer.
 
 > **ORIGIN matters:** `ORIGIN` must exactly match the URL you open in the browser
 > (scheme + host + port), otherwise every form action fails with a 403 (SvelteKit CSRF
@@ -83,7 +82,6 @@ rate limit is useful as an additional layer.
 | `TMDB_READ_ACCESS_TOKEN` |           | TMDB v4 read token — enables search/trending/detail pages      |
 | `ORIGIN`                 | ✔ in prod | Public URL of this frontend                                    |
 | `PORT`                   |           | Listen port (default 3000)                                     |
-| `FRONTEND_BIND_ADDRESS`  |           | Compose host bind address (default `127.0.0.1`)                |
 
 The backend is **never published by this repository** — all GraphQL and TMDB traffic flows through
 the authenticated frontend server. The frontend container runs as an unprivileged user and does not

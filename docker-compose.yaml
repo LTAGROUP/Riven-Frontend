@@ -19,9 +19,7 @@ services:
         build: .
         restart: unless-stopped
         ports:
-            # Loopback-only by default. Put a TLS reverse proxy in front for a
-            # web-facing URL. Override only if you intentionally want LAN access.
-            - '${FRONTEND_BIND_ADDRESS:-127.0.0.1}:3001:3000'
+            - '3001:3000'
         environment:
             - FRONTEND_PASSWORD=${FRONTEND_PASSWORD:?set FRONTEND_PASSWORD in .env}
             - AUTH_SECRET=${AUTH_SECRET:?set AUTH_SECRET in .env}
