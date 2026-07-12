@@ -24,6 +24,14 @@ const DIRECTORY_MODE = 0o040000;
 const MAX_DIRECTORIES = 100;
 const MAX_FILES = 500;
 
+function absoluteEntryPath(directory: string, entry: string): string {
+    const normalizedEntry = entry.replace(/\\/g, '/');
+    if (normalizedEntry.startsWith('/')) return normalizedEntry;
+
+    const base = directory === '/' ? '' : directory.replace(/\/+$/, '');
+    return `${base}/${normalizedEntry.replace(/^\/+/, '')}`;
+}
+
 function mediaRootMarker(item: MediaItemReference): string | null {
     if (item.type === 'movie' && item.tmdbId) return `{tmdb-${item.tmdbId}}`;
     // Show VFS roots use the series TVDB id. Episode.tvdbId identifies the
@@ -47,10 +55,11 @@ export async function getVfsFilesForItem(item: MediaItemReference): Promise<VfsM
     try {
         const root = item.type === 'movie' ? '/movies' : '/shows';
         const rootEntries = await execute(VfsDirQuery, { path: root });
-        const mediaRoot = rootEntries.vfsDirectoryEntryPaths.find((path) =>
+        const mediaRootEntry = rootEntries.vfsDirectoryEntryPaths.find((path) =>
             path.toLowerCase().includes(marker.toLowerCase())
         );
-        if (!mediaRoot) return [];
+        if (!mediaRootEntry) return [];
+        const mediaRoot = absoluteEntryPath(root, mediaRootEntry);
 
         const files: VfsMediaFile[] = [];
         const visitedDirectories = new Set<string>();
@@ -70,10 +79,11 @@ export async function getVfsFilesForItem(item: MediaItemReference): Promise<VfsM
 
             const children = await execute(VfsDirQuery, { path: directory });
             await Promise.all(
-                children.vfsDirectoryEntryPaths.map(async (path) => {
+                children.vfsDirectoryEntryPaths.map(async (entryPath) => {
                     if (filesVisited >= MAX_FILES) return;
 
                     try {
+                        const path = absoluteEntryPath(directory, entryPath);
                         const stat = await execute(VfsStatQuery, { path });
                         const isDirectory =
                             (stat.vfsEntryStat.mode & DIRECTORY_MODE_MASK) === DIRECTORY_MODE;
