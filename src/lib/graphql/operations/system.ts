@@ -39,6 +39,7 @@ export const VfsStatQuery = graphql(`
 export const VfsEntryQuery = graphql(`
     query VfsEntry($path: String!) {
         vfsEntry(path: $path) {
+            __typename
             ... on MediaEntry {
                 id
                 type

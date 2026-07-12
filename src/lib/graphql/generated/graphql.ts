@@ -949,7 +949,7 @@ export type VfsEntryQuery = {
     __typename?: 'Query';
     vfsEntry?:
         | {
-              __typename?: 'MediaEntry';
+              __typename: 'MediaEntry';
               id: string;
               type: string;
               originalFilename: string;
@@ -960,7 +960,7 @@ export type VfsEntryQuery = {
               provider?: string | null;
               streamPermalink?: string | null;
           }
-        | { __typename?: 'SubtitleEntry'; id: string; language: string; fileSize: number }
+        | { __typename: 'SubtitleEntry'; id: string; language: string; fileSize: number }
         | null;
 };
 
@@ -1267,6 +1267,7 @@ export const VfsStatDocument = new TypedDocumentString(`
 export const VfsEntryDocument = new TypedDocumentString(`
     query VfsEntry($path: String!) {
   vfsEntry(path: $path) {
+    __typename
     ... on MediaEntry {
       id
       type
