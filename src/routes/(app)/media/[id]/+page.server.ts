@@ -7,7 +7,7 @@ import {
 } from '$lib/graphql/operations/media';
 import { dbConfigured, fetchItemDetailFromDb, type DbItemDetail } from '$lib/server/db';
 import { BackendError, execute, isBrokenResponseError } from '$lib/server/graphql-client';
-import { getVfsFileNamesForItem } from '$lib/server/vfs';
+import { getVfsFileNamesForItem, getVfsFilesForItem } from '$lib/server/vfs';
 import { getCapabilities } from '$lib/server/capabilities';
 
 import type { MediaItemByIdQuery as MediaItemByIdResult } from '$lib/graphql/generated/graphql';
@@ -18,9 +18,12 @@ type ItemDetail = MediaItemByIdResult['mediaItemById'];
 /**
  * Builds the same shape the GraphQL query returns from a database row, so the
  * page renders identically when the API's type resolution is broken upstream.
- * Streams/files data isn't available in this mode (empty lists).
+ * Stream details are limited in this mode; file records are supplied by VFS.
  */
-function synthesizeDetail(detail: DbItemDetail): ItemDetail {
+function synthesizeDetail(
+    detail: DbItemDetail,
+    filesystemEntries: Awaited<ReturnType<typeof getVfsFilesForItem>> = []
+): ItemDetail {
     const { item } = detail;
     const typename = { movie: 'Movie', show: 'Show', season: 'Season', episode: 'Episode' }[
         item.type
@@ -53,7 +56,7 @@ function synthesizeDetail(detail: DbItemDetail): ItemDetail {
         activeStream: stream,
         streams: stream ? [stream] : [],
         blacklistedStreams: [],
-        filesystemEntries: [],
+        filesystemEntries,
         subtitles: []
     };
 
@@ -103,9 +106,9 @@ function synthesizeDetail(detail: DbItemDetail): ItemDetail {
                     ? {
                           id: detail.parent.id,
                           number: detail.parent.number ?? 0,
-                          show: { id: '', title: '' }
+                          show: { id: '', title: '', tvdbId: detail.parent.tvdbId ?? '' }
                       }
-                    : { id: '', number: 0, show: { id: '', title: '' } }
+                    : { id: '', number: 0, show: { id: '', title: '', tvdbId: '' } }
             } as unknown as ItemDetail;
     }
 }
@@ -144,7 +147,25 @@ export const load: PageServerLoad = async ({ params }) => {
     if (dbConfigured()) {
         try {
             const detail = await fetchItemDetailFromDb(params.id);
-            if (detail) return { item: synthesizeDetail(detail), limited: true, fileNames: {} };
+            if (detail) {
+                const capabilities = await getCapabilities();
+                const files = capabilities.hasVfs
+                    ? await getVfsFilesForItem({
+                          id: detail.item.id,
+                          type: detail.item.type,
+                          tmdbId: detail.item.tmdbId,
+                          tvdbId: detail.item.tvdbId,
+                          showTvdbId: detail.parent?.tvdbId
+                      })
+                    : [];
+                return {
+                    item: synthesizeDetail(detail, files),
+                    limited: true,
+                    fileNames: Object.fromEntries(
+                        files.map((file) => [file.id, file.originalFilename])
+                    )
+                };
+            }
         } catch {
             // fall through to 404
         }

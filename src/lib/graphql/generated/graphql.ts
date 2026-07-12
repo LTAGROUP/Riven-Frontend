@@ -951,8 +951,11 @@ export type VfsEntryQuery = {
         | {
               __typename?: 'MediaEntry';
               id: string;
+              type: string;
               originalFilename: string;
               fileSize: number;
+              createdAt: string;
+              updatedAt?: string | null;
               plugin: string;
               provider?: string | null;
               streamPermalink?: string | null;
@@ -1271,8 +1274,11 @@ export const VfsEntryDocument = new TypedDocumentString(`
   vfsEntry(path: $path) {
     ... on MediaEntry {
       id
+      type
       originalFilename
       fileSize
+      createdAt
+      updatedAt
       plugin
       provider
       streamPermalink

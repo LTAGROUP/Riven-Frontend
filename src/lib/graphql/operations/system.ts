@@ -41,8 +41,11 @@ export const VfsEntryQuery = graphql(`
         vfsEntry(path: $path) {
             ... on MediaEntry {
                 id
+                type
                 originalFilename
                 fileSize
+                createdAt
+                updatedAt
                 plugin
                 provider
                 streamPermalink

@@ -254,7 +254,7 @@ export interface DbItemDetail {
             releaseDate: string | null;
         }[];
     }[];
-    parent: { id: string; title: string; number: number | null } | null;
+    parent: { id: string; title: string; number: number | null; tvdbId?: string } | null;
 }
 
 function toDetailItem(row: MediaItemRow): DbItemDetail['item'] {
@@ -339,7 +339,20 @@ export async function fetchItemDetailFromDb(id: string): Promise<DbItemDetail | 
         );
         const season = seasonResult.rows[0];
         if (season) {
-            detail.parent = { id: season.id, title: season.title, number: season.number };
+            let showTvdbId: string | undefined;
+            if (season.show_id) {
+                const showResult = await db.query<MediaItemRow>(
+                    `select ${ITEM_COLUMNS} from media_item where id = $1`,
+                    [season.show_id]
+                );
+                showTvdbId = showResult.rows[0]?.tvdb_id ?? undefined;
+            }
+            detail.parent = {
+                id: season.id,
+                title: season.title,
+                number: season.number,
+                tvdbId: showTvdbId
+            };
         }
     }
 

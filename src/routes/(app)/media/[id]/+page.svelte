@@ -82,7 +82,7 @@
             <CircleAlert class="mt-0.5 size-4 shrink-0" />
             <span>
                 riven-ts's item API is currently broken upstream — showing details read directly
-                from Riven's database. Stream and file listings are unavailable in this mode.
+                from Riven's database. Some stream details are unavailable in this mode.
             </span>
         </div>
     {/if}

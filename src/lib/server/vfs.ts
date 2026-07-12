@@ -10,6 +10,15 @@ interface MediaItemReference {
     showTvdbId?: string;
 }
 
+export interface VfsMediaFile {
+    id: string;
+    type: string;
+    fileSize: number;
+    createdAt: string;
+    updatedAt: string | null;
+    originalFilename: string;
+}
+
 const DIRECTORY_MODE_MASK = 0o170000;
 const DIRECTORY_MODE = 0o040000;
 const MAX_DIRECTORIES = 100;
@@ -31,11 +40,9 @@ function mediaRootMarker(item: MediaItemReference): string | null {
  * metadata, while VFS MediaEntry records include the original filename and
  * the owning media item.
  */
-export async function getVfsFileNamesForItem(
-    item: MediaItemReference
-): Promise<Record<string, string>> {
+export async function getVfsFilesForItem(item: MediaItemReference): Promise<VfsMediaFile[]> {
     const marker = mediaRootMarker(item);
-    if (!marker) return {};
+    if (!marker) return [];
 
     try {
         const root = item.type === 'movie' ? '/movies' : '/shows';
@@ -43,9 +50,9 @@ export async function getVfsFileNamesForItem(
         const mediaRoot = rootEntries.vfsDirectoryEntryPaths.find((path) =>
             path.toLowerCase().includes(marker.toLowerCase())
         );
-        if (!mediaRoot) return {};
+        if (!mediaRoot) return [];
 
-        const names: Record<string, string> = {};
+        const files: VfsMediaFile[] = [];
         const visitedDirectories = new Set<string>();
         let directoriesVisited = 0;
         let filesVisited = 0;
@@ -79,7 +86,14 @@ export async function getVfsFileNamesForItem(
                         const result = await execute(VfsEntryQuery, { path });
                         const entry = result.vfsEntry;
                         if (entry?.__typename === 'MediaEntry' && entry.mediaItem.id === item.id) {
-                            names[entry.id] = entry.originalFilename;
+                            files.push({
+                                id: entry.id,
+                                type: entry.type,
+                                fileSize: entry.fileSize,
+                                createdAt: entry.createdAt,
+                                updatedAt: entry.updatedAt ?? null,
+                                originalFilename: entry.originalFilename
+                            });
                         }
                     } catch {
                         // A stale VFS path should not prevent the media page from rendering.
@@ -89,9 +103,17 @@ export async function getVfsFileNamesForItem(
         }
 
         await walk(mediaRoot);
-        return names;
+        return files;
     } catch {
         // VFS is optional and can be unavailable independently of GraphQL media details.
-        return {};
+        return [];
     }
+}
+
+export async function getVfsFileNamesForItem(
+    item: MediaItemReference
+): Promise<Record<string, string>> {
+    return Object.fromEntries(
+        (await getVfsFilesForItem(item)).map((file) => [file.id, file.originalFilename])
+    );
 }
