@@ -120,18 +120,15 @@ export const load: PageServerLoad = async ({ params }) => {
         try {
             const detail = await fetchItemDetailFromDb(params.id);
             if (detail) {
-                const capabilities = await getCapabilities();
-                const files = capabilities.hasVfs
-                    ? await getVfsFilesForItem({
-                          id: detail.item.id,
-                          type: detail.item.type,
-                          tmdbId: detail.item.tmdbId,
-                          tvdbId: detail.item.tvdbId,
-                          showTvdbId: detail.parent?.tvdbId,
-                          seasonNumber: detail.parent?.number ?? undefined,
-                          episodeNumber: detail.item.number
-                      })
-                    : [];
+                const files = await getVfsFilesForItem({
+                    id: detail.item.id,
+                    type: detail.item.type,
+                    tmdbId: detail.item.tmdbId,
+                    tvdbId: detail.item.tvdbId,
+                    showTvdbId: detail.parent?.tvdbId,
+                    seasonNumber: detail.parent?.number ?? undefined,
+                    episodeNumber: detail.item.number
+                });
                 return {
                     item: synthesizeDetail(detail, files),
                     limited: true,
@@ -181,18 +178,15 @@ export const load: PageServerLoad = async ({ params }) => {
         try {
             const detail = await fetchItemDetailFromDb(params.id);
             if (detail) {
-                const capabilities = await getCapabilities();
-                const files = capabilities.hasVfs
-                    ? await getVfsFilesForItem({
-                          id: detail.item.id,
-                          type: detail.item.type,
-                          tmdbId: detail.item.tmdbId,
-                          tvdbId: detail.item.tvdbId,
-                          showTvdbId: detail.parent?.tvdbId,
-                          seasonNumber: detail.parent?.number ?? undefined,
-                          episodeNumber: detail.item.number
-                      })
-                    : [];
+                const files = await getVfsFilesForItem({
+                    id: detail.item.id,
+                    type: detail.item.type,
+                    tmdbId: detail.item.tmdbId,
+                    tvdbId: detail.item.tvdbId,
+                    showTvdbId: detail.parent?.tvdbId,
+                    seasonNumber: detail.parent?.number ?? undefined,
+                    episodeNumber: detail.item.number
+                });
                 return {
                     item: synthesizeDetail(detail, files),
                     limited: true,
