@@ -221,7 +221,7 @@
                     {/snippet}
                 </CapabilityGate>
 
-                {#if files.length > 0}
+                {#if files.length > 0 && !files[0].id.startsWith('/')}
                     <CapabilityGate enabled={capabilities.hasSaveStreamUrl}>
                         {#snippet children({ disabled })}
                             <Button

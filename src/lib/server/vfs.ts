@@ -112,9 +112,12 @@ export async function getVfsFilesForItem(item: MediaItemReference): Promise<VfsM
                         }
 
                         filesVisited += 1;
-                        const result = await execute(VfsEntryQuery, { path });
-                        const entry = result.vfsEntry;
-                        if (entry?.__typename === 'MediaEntry' && pathBelongsToItem(path, item)) {
+                        if (!pathBelongsToItem(path, item)) return;
+
+                        try {
+                            const result = await execute(VfsEntryQuery, { path });
+                            const entry = result.vfsEntry;
+                            if (entry?.__typename !== 'MediaEntry') return;
                             files.push({
                                 id: entry.id,
                                 type: entry.type,
@@ -122,6 +125,17 @@ export async function getVfsFilesForItem(item: MediaItemReference): Promise<VfsM
                                 createdAt: entry.createdAt,
                                 updatedAt: entry.updatedAt ?? null,
                                 originalFilename: entry.originalFilename
+                            });
+                        } catch {
+                            // Match the /vfs browser's behavior: a successful stat is enough to
+                            // show the file even if its richer entry metadata cannot be resolved.
+                            files.push({
+                                id: path,
+                                type: 'media',
+                                fileSize: stat.vfsEntryStat.size,
+                                createdAt: stat.vfsEntryStat.ctime,
+                                updatedAt: stat.vfsEntryStat.mtime,
+                                originalFilename: path.split('/').pop() ?? path
                             });
                         }
                     } catch {
