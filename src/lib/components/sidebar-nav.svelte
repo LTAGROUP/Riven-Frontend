@@ -3,7 +3,6 @@
         Braces,
         Compass,
         Database,
-        FileText,
         FolderTree,
         Gauge,
         Library,
@@ -28,7 +27,6 @@
         { href: '/explore', label: 'Explore', icon: Compass },
         { href: '/summary', label: 'Summary', icon: Gauge },
         { href: '/vfs', label: 'Files', icon: FolderTree },
-        { href: '/logs', label: 'Logs', icon: FileText },
         { href: '/database', label: 'Database', icon: Database },
         { href: '/graphql', label: 'GraphQL', icon: Braces },
         { href: '/settings', label: 'Settings', icon: Settings }
