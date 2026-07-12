@@ -959,11 +959,6 @@ export type VfsEntryQuery = {
               plugin: string;
               provider?: string | null;
               streamPermalink?: string | null;
-              mediaItem:
-                  | { __typename?: 'Episode'; id: string; title: string; type: string }
-                  | { __typename?: 'Movie'; id: string; title: string; type: string }
-                  | { __typename?: 'Season'; id: string; title: string; type: string }
-                  | { __typename?: 'Show'; id: string; title: string; type: string };
           }
         | { __typename?: 'SubtitleEntry'; id: string; language: string; fileSize: number }
         | null;
@@ -1282,11 +1277,6 @@ export const VfsEntryDocument = new TypedDocumentString(`
       plugin
       provider
       streamPermalink
-      mediaItem {
-        id
-        title
-        type
-      }
     }
     ... on SubtitleEntry {
       id

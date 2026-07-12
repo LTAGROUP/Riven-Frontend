@@ -49,11 +49,6 @@ export const VfsEntryQuery = graphql(`
                 plugin
                 provider
                 streamPermalink
-                mediaItem {
-                    id
-                    title
-                    type
-                }
             }
             ... on SubtitleEntry {
                 id

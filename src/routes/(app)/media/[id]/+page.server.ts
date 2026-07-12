@@ -114,6 +114,37 @@ function synthesizeDetail(
 }
 
 export const load: PageServerLoad = async ({ params }) => {
+    // Prefer the database while configured. Riven currently throws while resolving
+    // MediaItem.streams and MediaItem interface values, even for otherwise valid items.
+    if (dbConfigured()) {
+        try {
+            const detail = await fetchItemDetailFromDb(params.id);
+            if (detail) {
+                const capabilities = await getCapabilities();
+                const files = capabilities.hasVfs
+                    ? await getVfsFilesForItem({
+                          id: detail.item.id,
+                          type: detail.item.type,
+                          tmdbId: detail.item.tmdbId,
+                          tvdbId: detail.item.tvdbId,
+                          showTvdbId: detail.parent?.tvdbId,
+                          seasonNumber: detail.parent?.number ?? undefined,
+                          episodeNumber: detail.item.number
+                      })
+                    : [];
+                return {
+                    item: synthesizeDetail(detail, files),
+                    limited: true,
+                    fileNames: Object.fromEntries(
+                        files.map((file) => [file.id, file.originalFilename])
+                    )
+                };
+            }
+        } catch {
+            // Fall through to GraphQL when direct database access fails.
+        }
+    }
+
     let graphqlFailure: BackendError | undefined;
     try {
         const result = await execute(MediaItemByIdQuery, { id: params.id });
@@ -129,7 +160,9 @@ export const load: PageServerLoad = async ({ params }) => {
                       tmdbId: item.__typename === 'Movie' ? item.tmdbId : undefined,
                       tvdbId: item.__typename === 'Episode' ? item.tvdbId : undefined,
                       showTvdbId:
-                          item.__typename === 'Episode' ? item.season.show.tvdbId : undefined
+                          item.__typename === 'Episode' ? item.season.show.tvdbId : undefined,
+                      seasonNumber: item.__typename === 'Episode' ? item.season.number : undefined,
+                      episodeNumber: item.__typename === 'Episode' ? item.number : undefined
                   })
                 : {};
         return { item, limited: false, fileNames };
@@ -155,7 +188,9 @@ export const load: PageServerLoad = async ({ params }) => {
                           type: detail.item.type,
                           tmdbId: detail.item.tmdbId,
                           tvdbId: detail.item.tvdbId,
-                          showTvdbId: detail.parent?.tvdbId
+                          showTvdbId: detail.parent?.tvdbId,
+                          seasonNumber: detail.parent?.number ?? undefined,
+                          episodeNumber: detail.item.number
                       })
                     : [];
                 return {

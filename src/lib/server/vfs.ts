@@ -8,6 +8,8 @@ interface MediaItemReference {
     tmdbId?: string;
     tvdbId?: string;
     showTvdbId?: string;
+    seasonNumber?: number;
+    episodeNumber?: number;
 }
 
 export interface VfsMediaFile {
@@ -40,6 +42,23 @@ function mediaRootMarker(item: MediaItemReference): string | null {
         return `{tvdb-${item.showTvdbId || item.tvdbId}}`;
     }
     return null;
+}
+
+function pathBelongsToItem(path: string, item: MediaItemReference): boolean {
+    if (item.type === 'movie') return true;
+    if (
+        item.type !== 'episode' ||
+        item.seasonNumber === undefined ||
+        item.episodeNumber === undefined
+    )
+        return false;
+
+    const season = String(item.seasonNumber).padStart(2, '0');
+    const episode = String(item.episodeNumber).padStart(2, '0');
+    return (
+        path.toLowerCase().includes(`/season ${season}/`) &&
+        new RegExp(`s${season}e${episode}(?:\\D|$)`, 'i').test(path)
+    );
 }
 
 /**
@@ -95,7 +114,7 @@ export async function getVfsFilesForItem(item: MediaItemReference): Promise<VfsM
                         filesVisited += 1;
                         const result = await execute(VfsEntryQuery, { path });
                         const entry = result.vfsEntry;
-                        if (entry?.__typename === 'MediaEntry' && entry.mediaItem.id === item.id) {
+                        if (entry?.__typename === 'MediaEntry' && pathBelongsToItem(path, item)) {
                             files.push({
                                 id: entry.id,
                                 type: entry.type,
