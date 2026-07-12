@@ -5,6 +5,7 @@
     import { enhance } from '$app/forms';
 
     import { Button } from '$lib/components/ui/button';
+    import { Input } from '$lib/components/ui/input';
     import { Label } from '$lib/components/ui/label';
     import * as Select from '$lib/components/ui/select';
     import { Switch } from '$lib/components/ui/switch';
@@ -19,78 +20,230 @@
     let running = $state(false);
     let formEl: HTMLFormElement | undefined = $state();
 
-    async function runTableQuery(table: string) {
-        sql = `select * from "${table}" order by 1 limit 100`;
-        await tick(); // let the textarea binding flush before serializing the form
-        formEl?.requestSubmit();
+    type TableKey = 'media_item' | 'stream' | 'default';
+    type SortOption = { id: string; label: string; clause: string };
+    type QueryOption = {
+        id: string;
+        label: string;
+        description: string;
+        inputLabel?: string;
+        placeholder?: string;
+        build: (table: string, value: string, sortClause: string) => string;
+    };
+
+    const SORT_OPTIONS: Record<TableKey, SortOption[]> = {
+        media_item: [
+            { id: 'newest', label: 'Newest first', clause: 'created_at desc' },
+            { id: 'oldest', label: 'Oldest first', clause: 'created_at asc' },
+            { id: 'title', label: 'Title A–Z', clause: 'title asc' },
+            { id: 'updated', label: 'Recently updated', clause: 'updated_at desc nulls last' }
+        ],
+        stream: [{ id: 'hash', label: 'Info hash A–Z', clause: 'info_hash asc' }],
+        default: [
+            { id: 'first-asc', label: 'First column A–Z', clause: '1 asc' },
+            { id: 'first-desc', label: 'First column Z–A', clause: '1 desc' }
+        ]
+    };
+
+    function quoteIdentifier(identifier: string): string {
+        return `"${identifier.replaceAll('"', '""')}"`;
     }
 
-    const SNIPPETS = [
-        {
-            id: 'find-by-title',
-            label: 'Find items by title',
-            sql: `select id, type, title, state, created_at
+    function escapeSqlLiteral(value: string): string {
+        return value.replaceAll("'", "''");
+    }
+
+    function tableKey(table: string): TableKey {
+        const normalized = table.toLowerCase();
+        if (normalized === 'media_item' || normalized === 'media_items') return 'media_item';
+        if (normalized === 'stream' || normalized === 'streams') return 'stream';
+        return 'default';
+    }
+
+    function buildBrowseQuery(table: string, _value: string, sortClause: string): string {
+        return `select *
+from ${quoteIdentifier(table)}
+order by ${sortClause}
+limit 100`;
+    }
+
+    const QUERY_OPTIONS: Record<TableKey, QueryOption[]> = {
+        media_item: [
+            {
+                id: 'browse',
+                label: 'Browse rows',
+                description: 'Preview media items with an optional sort order.',
+                build: buildBrowseQuery
+            },
+            {
+                id: 'find-title',
+                label: 'Find by title',
+                description: 'Search title and full_title with a case-insensitive match.',
+                inputLabel: 'Title contains',
+                placeholder: 'e.g. Dune',
+                build: (_table, value) => `select id, type, title, state, created_at
 from media_item
-where title ilike '%<title>%'
+where (title ilike '%${escapeSqlLiteral(value || '<title>')}%'
+    or full_title ilike '%${escapeSqlLiteral(value || '<title>')}%')
 order by created_at desc
 limit 50`
-        },
-        {
-            id: 'states',
-            label: 'Items per state',
-            sql: `select state, count(*)
-from media_item
-group by state
-order by 2 desc`
-        },
-        {
-            id: 'recent',
-            label: 'Recently added',
-            sql: `select id, type, title, state, created_at
+            },
+            {
+                id: 'recent',
+                label: 'Recently added',
+                description: 'Show the latest movies and shows added to the library.',
+                build: () => `select id, type, title, state, created_at
 from media_item
 where type in ('movie', 'show')
 order by created_at desc
 limit 50`
-        },
-        {
-            id: 'failed',
-            label: 'Failed items',
-            sql: `select id, type, title, failed_scrape_attempts, scraped_at
+            },
+            {
+                id: 'states',
+                label: 'Items per state',
+                description: 'Count media items grouped by their current state.',
+                build: () => `select state, count(*)
+from media_item
+group by state
+order by 2 desc`
+            },
+            {
+                id: 'failed',
+                label: 'Failed items',
+                description: 'Find items whose most recent scrape attempt failed.',
+                build: () => `select id, type, title, failed_scrape_attempts, scraped_at
 from media_item
 where state = 'failed'
 order by scraped_at desc nulls last
 limit 50`
-        },
-        {
-            id: 'stuck-scraping',
-            label: 'Stuck in scraping',
-            sql: `select id, type, title, scraped_times, scraped_at, updated_at
+            },
+            {
+                id: 'stuck-scraping',
+                label: 'Stuck in scraping',
+                description: 'Find items that have remained in the scraping state longest.',
+                build: () => `select id, type, title, scraped_times, scraped_at, updated_at
 from media_item
 where state = 'scraping'
 order by updated_at asc nulls first
 limit 50`
-        },
-        {
-            id: 'show-children',
-            label: 'Episodes of a show',
-            sql: `select e.id, s."number" as season, e."number" as episode, e.title, e.state
+            },
+            {
+                id: 'show-children',
+                label: 'Episodes of a show',
+                description: 'Enter a show ID to list its seasons and episodes.',
+                inputLabel: 'Show ID',
+                placeholder: 'Paste a show ID…',
+                build: (
+                    _table,
+                    value
+                ) => `select e.id, s."number" as season, e."number" as episode, e.title, e.state
 from media_item e
 join media_item s on e.season_id = s.id
-where s.show_id = '<show id>'
+where s.show_id = '${escapeSqlLiteral(value || '<show id>')}'
 order by s."number", e."number"`
+            }
+        ],
+        stream: [
+            {
+                id: 'browse',
+                label: 'Browse rows',
+                description: 'Preview streams with an optional sort order.',
+                build: buildBrowseQuery
+            },
+            {
+                id: 'find-info-hash',
+                label: 'Find by stream ID / info hash',
+                description: 'Search info_hash for a full or partial stream identifier.',
+                inputLabel: 'Stream ID or info hash',
+                placeholder: 'Paste a stream ID…',
+                build: (table, value) => `select *
+from ${quoteIdentifier(table)}
+where info_hash ilike '%${escapeSqlLiteral(value || '<stream ID>')}%'
+limit 50`
+            }
+        ],
+        default: [
+            {
+                id: 'browse',
+                label: 'Browse rows',
+                description: 'Preview rows from the selected table.',
+                build: buildBrowseQuery
+            }
+        ]
+    };
+
+    let selectedTable = $state('');
+    let quickQuery = $state('browse');
+    let quickQueryValue = $state('');
+    let sortBy = $state('');
+
+    $effect(() => {
+        const firstTable = data.tables[0]?.name;
+        if (!selectedTable && firstTable) {
+            selectedTable = firstTable;
+            sortBy = SORT_OPTIONS[tableKey(firstTable)][0]?.id ?? '';
         }
-    ];
+    });
 
-    let snippet = $state('');
+    const activeTableKey = $derived(tableKey(selectedTable));
+    const activeQueryOptions = $derived(QUERY_OPTIONS[activeTableKey]);
+    const activeQuery = $derived(
+        activeQueryOptions.find((option) => option.id === quickQuery) ?? activeQueryOptions[0]
+    );
+    const activeSortOptions = $derived(SORT_OPTIONS[activeTableKey]);
+    const sortLabel = $derived(
+        activeSortOptions.find((option) => option.id === sortBy)?.label ?? 'Sort rows'
+    );
+    const quickQueryLabel = $derived(activeQuery?.label ?? 'Quick query');
 
-    function applySnippet(id: string | undefined) {
-        const selected = SNIPPETS.find((s) => s.id === id);
-        if (selected) sql = selected.sql;
+    function getSortClause(key: TableKey, id: string): string {
+        return SORT_OPTIONS[key].find((option) => option.id === id)?.clause ?? '1';
     }
 
-    const snippetLabel = $derived(
-        SNIPPETS.find((s) => s.id === snippet)?.label ?? 'Insert a snippet…'
-    );
+    function buildSelectedQuery(
+        optionId = quickQuery,
+        table = selectedTable,
+        value = quickQueryValue,
+        sortId = sortBy
+    ): string {
+        const key = tableKey(table);
+        const option = QUERY_OPTIONS[key].find((candidate) => candidate.id === optionId);
+        return option?.build(table, value, getSortClause(key, sortId)) ?? '';
+    }
+
+    async function runTableQuery(table: string) {
+        selectedTable = table;
+        quickQuery = 'browse';
+        quickQueryValue = '';
+        sortBy = SORT_OPTIONS[tableKey(table)][0]?.id ?? '';
+        sql = buildSelectedQuery('browse', table, '', sortBy);
+        await tick(); // let the textarea binding flush before serializing the form
+        formEl?.requestSubmit();
+    }
+
+    function applyQueryOption(id: string | undefined) {
+        if (!id || !selectedTable) return;
+        quickQuery = id;
+        quickQueryValue = '';
+        sql = buildSelectedQuery(id, selectedTable, '', sortBy);
+    }
+
+    function applyQueryValue() {
+        if (selectedTable) sql = buildSelectedQuery();
+    }
+
+    function applySort(id: string | undefined) {
+        if (!id || !selectedTable) return;
+        sortBy = id;
+        if (quickQuery === 'browse') sql = buildSelectedQuery('browse', selectedTable, '', id);
+    }
+
+    function onQuickQueryKeydown(event: KeyboardEvent) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            applyQueryValue();
+        }
+    }
 
     function onKeydown(event: KeyboardEvent) {
         if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
@@ -139,7 +292,12 @@ order by s."number", e."number"`
                                 <button
                                     type="button"
                                     onclick={() => runTableQuery(table.name)}
-                                    class="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                                    aria-pressed={selectedTable === table.name}
+                                    class={`flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent/50 hover:text-foreground ${
+                                        selectedTable === table.name
+                                            ? 'bg-accent text-foreground'
+                                            : 'text-muted-foreground'
+                                    }`}
                                 >
                                     <span class="flex min-w-0 items-center gap-2">
                                         <Table2 class="size-3.5 shrink-0" />
@@ -167,20 +325,82 @@ order by s."number", e."number"`
                     }}
                     class="space-y-3"
                 >
-                    <div class="flex justify-end">
-                        <Select.Root
-                            type="single"
-                            bind:value={snippet}
-                            onValueChange={applySnippet}
-                        >
-                            <Select.Trigger class="w-56">{snippetLabel}</Select.Trigger>
-                            <Select.Content>
-                                {#each SNIPPETS as s (s.id)}
-                                    <Select.Item value={s.id}>{s.label}</Select.Item>
-                                {/each}
-                            </Select.Content>
-                        </Select.Root>
+                    <div
+                        class="flex flex-col gap-3 rounded-md border bg-muted/20 p-3 sm:flex-row sm:items-start sm:justify-between"
+                    >
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <Label for="quick-query" class="text-sm font-medium"
+                                    >Quick query</Label
+                                >
+                                {#if selectedTable}
+                                    <span class="text-xs text-muted-foreground">
+                                        for <code class="font-mono">{selectedTable}</code>
+                                    </span>
+                                {/if}
+                            </div>
+                            {#if activeQuery}
+                                <p class="mt-1 text-xs text-muted-foreground">
+                                    {activeQuery.description}
+                                </p>
+                            {/if}
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            <Select.Root
+                                type="single"
+                                bind:value={quickQuery}
+                                onValueChange={applyQueryOption}
+                                disabled={!selectedTable}
+                            >
+                                <Select.Trigger id="quick-query" class="w-56">
+                                    {quickQueryLabel}
+                                </Select.Trigger>
+                                <Select.Content>
+                                    {#each activeQueryOptions as option (option.id)}
+                                        <Select.Item value={option.id}>{option.label}</Select.Item>
+                                    {/each}
+                                </Select.Content>
+                            </Select.Root>
+
+                            {#if activeQuery?.id === 'browse'}
+                                <Select.Root
+                                    type="single"
+                                    bind:value={sortBy}
+                                    onValueChange={applySort}
+                                    disabled={!selectedTable}
+                                >
+                                    <Select.Trigger class="w-44">{sortLabel}</Select.Trigger>
+                                    <Select.Content>
+                                        {#each activeSortOptions as option (option.id)}
+                                            <Select.Item value={option.id}
+                                                >{option.label}</Select.Item
+                                            >
+                                        {/each}
+                                    </Select.Content>
+                                </Select.Root>
+                            {/if}
+                        </div>
                     </div>
+
+                    {#if activeQuery?.inputLabel}
+                        <div
+                            class="flex flex-col gap-2 rounded-md border border-dashed p-3 sm:flex-row sm:items-end"
+                        >
+                            <div class="min-w-0 flex-1 space-y-1.5">
+                                <Label for="quick-query-value">{activeQuery.inputLabel}</Label>
+                                <Input
+                                    id="quick-query-value"
+                                    bind:value={quickQueryValue}
+                                    onkeydown={onQuickQueryKeydown}
+                                    placeholder={activeQuery.placeholder}
+                                />
+                            </div>
+                            <Button type="button" variant="secondary" onclick={applyQueryValue}>
+                                Apply to SQL
+                            </Button>
+                        </div>
+                    {/if}
                     <Textarea
                         name="sql"
                         bind:value={sql}
